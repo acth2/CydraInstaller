@@ -25,7 +25,6 @@ public class CydraInstaller {
     private boolean enableSSH;
     private String rootPassword;
     public static boolean error = false;
-
     private static final String LANGUAGE_PATTERN = "^(fr|us|en|de|es|it)$";
     private static final String HOSTNAME_PATTERN = "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$";
     private static final String USERNAME_PATTERN = "^[a-z_][a-z0-9_-]{0,31}$";

@@ -63,6 +63,7 @@ public class InstallerUI {
     public void showError(String error) {
         CydraInstaller.error = true;
         clearAndShowFullScreen();
+        updateProgress(8);
 
         String[] lines = splitMessage("ERROR: " + error, Math.min(terminalWidth - 10, 70) + 19);
         showContentBox(lines);

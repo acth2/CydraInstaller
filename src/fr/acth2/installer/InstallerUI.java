@@ -32,14 +32,10 @@ public class InstallerUI {
                 "Welcome to CydraLite Installer",
                 "This will guide you through the installation",
                 "",
-                "Press Enter to continue..."
+                "[suivant]"
         };
         showContentBox(content);
-
-        System.out.println();
-        String centeredPrompt = centerText("> ", terminalWidth);
-        System.out.print(centeredPrompt);
-        scanner.nextLine();
+        waitForEnter();
     }
 
     public void showSection(String sectionName) {
@@ -47,33 +43,35 @@ public class InstallerUI {
 
         String[] content = {sectionName};
         showContentBox(content);
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
     }
 
     public void showMessage(String message) {
         clearAndShowFullScreen();
 
-        String[] content = {message};
-        showContentBox(content);
+        String[] lines = splitMessage(message, Math.min(terminalWidth - 10, 70));
+        showContentBox(lines);
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
         waitForEnter();
     }
 
     public void showError(String error) {
         clearAndShowFullScreen();
 
-        String[] content = {"ERROR: " + error};
-        showContentBox(content);
+        String[] lines = splitMessage("ERROR: " + error, Math.min(terminalWidth - 10, 70));
+        showContentBox(lines);
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
         waitForEnter();
     }
 
     public boolean confirmAction(String message) {
         clearAndShowFullScreen();
 
-        String[] content = {message};
-        showContentBox(content);
+        String[] lines = splitMessage(message, Math.min(terminalWidth - 10, 70));
+        showContentBox(lines);
 
         System.out.println();
-        String centeredPrompt = centerText("(y/n): ", terminalWidth);
-        System.out.print(centeredPrompt);
+        System.out.print("(y/n): ");
         String response = scanner.nextLine().trim().toLowerCase();
         return response.equals("y") || response.equals("yes");
     }
@@ -81,24 +79,22 @@ public class InstallerUI {
     public String getInput(String prompt) {
         clearAndShowFullScreen();
 
-        String[] content = {prompt};
-        showContentBox(content);
+        String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
+        showContentBox(lines);
 
         System.out.println();
-        String centeredPrompt = centerText("> ", terminalWidth);
-        System.out.print(centeredPrompt);
+        System.out.print("> ");
         return scanner.nextLine().trim();
     }
 
     public String getPassword(String prompt) {
         clearAndShowFullScreen();
 
-        String[] content = {prompt};
-        showContentBox(content);
+        String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
+        showContentBox(lines);
 
         System.out.println();
-        String centeredPrompt = centerText("> ", terminalWidth);
-        System.out.print(centeredPrompt);
+        System.out.print("> ");
 
         Console console = System.console();
         if (console != null) {
@@ -121,30 +117,21 @@ public class InstallerUI {
 
         while (true) {
             System.out.println();
-            String centeredPrompt = centerText("Select option (1-" + options.size() + "): ", terminalWidth);
-            System.out.print(centeredPrompt);
+            System.out.print("Select option (1-" + options.size() + "): ");
             try {
                 int choice = Integer.parseInt(scanner.nextLine());
                 if (choice >= 1 && choice <= options.size()) {
                     return options.get(choice - 1);
                 }
-            } catch (NumberFormatException e) {
-            }
-            clearAndShowFullScreen();
-            String[] errorContent = {"Invalid selection. Please try again."};
-            showContentBox(errorContent);
+            } catch (NumberFormatException ignored) { }
+            System.out.println("Invalid selection. Please try again.");
+            System.out.println();
         }
     }
 
     public void waitForEnter() {
-        clearAndShowFullScreen();
-
-        String[] content = {"Press Enter to continue..."};
-        showContentBox(content);
-
         System.out.println();
-        String centeredPrompt = centerText("> ", terminalWidth);
-        System.out.print(centeredPrompt);
+        System.out.print("Press Enter to continue...");
         scanner.nextLine();
     }
 
@@ -157,7 +144,7 @@ public class InstallerUI {
         clearScreen();
         showHeader();
         showProgressBar();
-        System.out.println("\n\n");
+        System.out.println("\n");
     }
 
     private void showHeader() {
@@ -197,19 +184,24 @@ public class InstallerUI {
     }
 
     private void showContentBox(String[] contentLines) {
+        if (contentLines == null || contentLines.length == 0) {
+            return;
+        }
+
         int maxLineLength = 0;
         for (String line : contentLines) {
-            if (line.length() > maxLineLength) {
+            if (line != null && line.length() > maxLineLength) {
                 maxLineLength = line.length();
             }
         }
 
-        int boxWidth = Math.min(terminalWidth - 4, maxLineLength + 6);
+        int boxWidth = Math.min(terminalWidth - 4, Math.max(maxLineLength + 6, 20));
         String border = "┌" + "─".repeat(boxWidth - 2) + "┐";
 
         System.out.println(centerText(border, terminalWidth));
 
         for (String line : contentLines) {
+            if (line == null) continue;
             String paddedLine = "│" + centerText(line, boxWidth - 2) + "│";
             System.out.println(centerText(paddedLine, terminalWidth));
         }
@@ -218,7 +210,36 @@ public class InstallerUI {
         System.out.println(centerText(bottom, terminalWidth));
     }
 
+    private String[] splitMessage(String message, int maxWidth) {
+        if (message == null || message.length() <= maxWidth) {
+            return new String[]{message};
+        }
+
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        StringBuilder currentLine = new StringBuilder();
+
+        for (String word : message.split(" ")) {
+            if (currentLine.length() + word.length() + 1 > maxWidth) {
+                if (currentLine.length() > 0) {
+                    lines.add(currentLine.toString());
+                    currentLine = new StringBuilder();
+                }
+            }
+            if (currentLine.length() > 0) {
+                currentLine.append(" ");
+            }
+            currentLine.append(word);
+        }
+
+        if (currentLine.length() > 0) {
+            lines.add(currentLine.toString());
+        }
+
+        return lines.toArray(new String[0]);
+    }
+
     private String centerText(String text, int width) {
+        if (text == null) return " ".repeat(width);
         if (text.length() >= width) {
             return text.substring(0, width);
         }
@@ -243,8 +264,7 @@ public class InstallerUI {
                     return;
                 }
             }
-        } catch (Exception e) {
-        }
+        } catch (Exception ignored) { }
 
         try {
             Process process = Runtime.getRuntime().exec(new String[]{"tput", "cols"});
@@ -255,12 +275,25 @@ public class InstallerUI {
             if (bytesRead > 0) {
                 String result = new String(buffer, 0, bytesRead).trim();
                 terminalWidth = Integer.parseInt(result);
+            } else {
+                terminalWidth = 80;
+            }
+
+            process = Runtime.getRuntime().exec(new String[]{"tput", "lines"});
+            process.waitFor();
+            reader = new InputStreamReader(process.getInputStream());
+            buffer = new char[8];
+            bytesRead = reader.read(buffer);
+            if (bytesRead > 0) {
+                String result = new String(buffer, 0, bytesRead).trim();
+                terminalHeight = Integer.parseInt(result);
+            } else {
+                terminalHeight = 24;
             }
         } catch (Exception e) {
             terminalWidth = 80;
+            terminalHeight = 24;
         }
-
-        terminalHeight = 24;
     }
 
     private void clearScreen() {

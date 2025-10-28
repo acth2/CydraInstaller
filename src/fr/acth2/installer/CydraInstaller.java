@@ -462,11 +462,26 @@ public class CydraInstaller {
         }
 
         if (!errors.isEmpty()) {
+            ui.clearAndShowFullScreen();
+
             StringBuilder errorMsg = new StringBuilder("Please fix the following errors:\n\n");
             for (String error : errors) {
                 errorMsg.append("- ").append(error).append("\n");
             }
-            ui.showMessage(errorMsg.toString());
+            errorMsg.append("\nPress any key to return to the form...");
+
+            System.out.println(ui.centerText("VALIDATION ERRORS", ui.getTerminalWidth()));
+            System.out.println();
+
+            String[] errorLines = errorMsg.toString().split("\n");
+            for (String line : errorLines) {
+                System.out.println(ui.centerText(line, ui.getTerminalWidth()));
+            }
+
+            try {
+                System.in.read();
+            } catch (IOException e) {}
+
             return false;
         }
 

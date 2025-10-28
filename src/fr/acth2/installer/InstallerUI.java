@@ -32,14 +32,13 @@ public class InstallerUI {
         String[] content = {
                 "CydraLite",
                 "",
-                "text",
-                "text",
-                "text",
-                "text",
+                "Welcome to CydraLite Installer",
+                "This will guide you through the installation",
                 "",
                 "[suivant]"
         };
         showContentBox(content);
+        waitForEnter();
     }
 
     public void showSection(String sectionName) {
@@ -55,35 +54,65 @@ public class InstallerUI {
     }
 
     public void showMessage(String message) {
+        clearScreen();
+        showHeader();
+        showProgressBar();
+        System.out.println("\n\n");
+
         String[] content = {message};
         showContentBox(content);
+        waitForEnter();
     }
 
     public void showError(String error) {
+        clearScreen();
+        showHeader();
+        showProgressBar();
+        System.out.println("\n\n");
+
         String[] content = {"ERROR: " + error};
         showContentBox(content);
+        waitForEnter();
     }
 
     public boolean confirmAction(String message) {
+        clearScreen();
+        showHeader();
+        showProgressBar();
+        System.out.println("\n\n");
+
         String[] content = {message};
         showContentBox(content);
 
         String centeredPrompt = centerText("(y/n): ", terminalWidth);
         System.out.print(centeredPrompt);
         String response = scanner.nextLine().trim().toLowerCase();
+        clearScreen();
         return response.equals("y") || response.equals("yes");
     }
 
     public String getInput(String prompt) {
+        clearScreen();
+        showHeader();
+        showProgressBar();
+        System.out.println("\n\n");
+
         String[] content = {prompt};
         showContentBox(content);
 
         String centeredPrompt = centerText("> ", terminalWidth);
         System.out.print(centeredPrompt);
-        return scanner.nextLine().trim();
+        String input = scanner.nextLine().trim();
+        clearScreen();
+        return input;
     }
 
     public String getPassword(String prompt) {
+        clearScreen();
+        showHeader();
+        showProgressBar();
+        System.out.println("\n\n");
+
         String[] content = {prompt};
         showContentBox(content);
 
@@ -91,15 +120,23 @@ public class InstallerUI {
         System.out.print(centeredPrompt);
 
         Console console = System.console();
+        String password;
         if (console != null) {
             char[] passwordChars = console.readPassword();
-            return new String(passwordChars);
+            password = new String(passwordChars);
         } else {
-            return scanner.nextLine().trim();
+            password = scanner.nextLine().trim();
         }
+        clearScreen();
+        return password;
     }
 
     public String selectFromList(String title, List<String> options) {
+        clearScreen();
+        showHeader();
+        showProgressBar();
+        System.out.println("\n\n");
+
         String[] content = new String[options.size() + 1];
         content[0] = title + ":";
         for (int i = 0; i < options.size(); i++) {
@@ -113,21 +150,25 @@ public class InstallerUI {
             try {
                 int choice = Integer.parseInt(scanner.nextLine());
                 if (choice >= 1 && choice <= options.size()) {
+                    clearScreen();
                     return options.get(choice - 1);
                 }
             } catch (NumberFormatException e) {
             }
-            showError("Invalid selection. Please try again.");
+            clearScreen();
+            showHeader();
+            showProgressBar();
+            System.out.println("\n\n");
+            String[] errorContent = {"Invalid selection. Please try again."};
+            showContentBox(errorContent);
         }
     }
 
     public void waitForEnter() {
-        String[] content = {"Press Enter to continue..."};
-        showContentBox(content);
-
-        String centeredPrompt = centerText("> ", terminalWidth);
+        String centeredPrompt = centerText("Press Enter to continue...", terminalWidth);
         System.out.print(centeredPrompt);
         scanner.nextLine();
+        clearScreen();
     }
 
     public void updateProgress(int section) {

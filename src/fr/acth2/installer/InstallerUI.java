@@ -65,26 +65,32 @@ public class InstallerUI {
     }
 
     public boolean confirmAction(String message) {
-        String[] content = {
-                message,
-                "(y/n): "
-        };
+        String[] content = {message};
         showContentBox(content);
+
+        String centeredPrompt = centerText("(y/n): ", terminalWidth);
+        System.out.print(centeredPrompt);
         String response = scanner.nextLine().trim().toLowerCase();
         return response.equals("y") || response.equals("yes");
     }
 
     public String getInput(String prompt) {
-        String[] content = {prompt + ": "};
+        String[] content = {prompt};
         showContentBox(content);
+
+        String centeredPrompt = centerText("> ", terminalWidth);
+        System.out.print(centeredPrompt);
         return scanner.nextLine().trim();
     }
 
     public String getPassword(String prompt) {
-        Console console = System.console();
-        String[] content = {prompt + ": "};
+        String[] content = {prompt};
         showContentBox(content);
 
+        String centeredPrompt = centerText("> ", terminalWidth);
+        System.out.print(centeredPrompt);
+
+        Console console = System.console();
         if (console != null) {
             char[] passwordChars = console.readPassword();
             return new String(passwordChars);
@@ -102,7 +108,8 @@ public class InstallerUI {
         showContentBox(content);
 
         while (true) {
-            System.out.print("Select option (1-" + options.size() + "): ");
+            String centeredPrompt = centerText("Select option (1-" + options.size() + "): ", terminalWidth);
+            System.out.print(centeredPrompt);
             try {
                 int choice = Integer.parseInt(scanner.nextLine());
                 if (choice >= 1 && choice <= options.size()) {
@@ -110,13 +117,16 @@ public class InstallerUI {
                 }
             } catch (NumberFormatException e) {
             }
-            System.out.println("Invalid selection. Please try again.");
+            showError("Invalid selection. Please try again.");
         }
     }
 
     public void waitForEnter() {
         String[] content = {"Press Enter to continue..."};
         showContentBox(content);
+
+        String centeredPrompt = centerText("> ", terminalWidth);
+        System.out.print(centeredPrompt);
         scanner.nextLine();
     }
 

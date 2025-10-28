@@ -1,7 +1,8 @@
-package fr.acth2.installer;
+package fr.acth2.installer.ui;
+
+import fr.acth2.installer.CydraInstaller;
 
 import java.io.Console;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Scanner;
@@ -15,7 +16,7 @@ public class InstallerUI {
     private static final String GREEN = "\u001B[32m";
     private static final String YELLOW = "\u001B[33m";
 
-    Scanner scanner;
+    public static Scanner scanner;
     private int totalSections = 8;
     private int currentSection = 0;
     private int terminalWidth;
@@ -241,7 +242,7 @@ public class InstallerUI {
         updateTerminalSize();
     }
 
-    void clearAndShowFullScreen() {
+    public void clearAndShowFullScreen() {
         clearScreen();
         showHeader();
         showProgressBar();
@@ -345,7 +346,7 @@ public class InstallerUI {
         return lines.toArray(new String[0]);
     }
 
-    String centerText(String text, int width) {
+    public String centerText(String text, int width) {
         if (text == null) return " ".repeat(width);
         if (text.length() >= width) {
             return text.substring(0, width);

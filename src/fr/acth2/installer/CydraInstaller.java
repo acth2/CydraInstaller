@@ -1,9 +1,11 @@
 package fr.acth2.installer;
 
+import fr.acth2.installer.handlers.CLIMultipleQuestionsHandler;
+import fr.acth2.installer.ui.InstallerUI;
+
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
-import java.security.SecureRandom;
 
 public class CydraInstaller {
     private Scanner scanner;
@@ -25,6 +27,7 @@ public class CydraInstaller {
     private boolean enableSSH;
     private String rootPassword;
     public static boolean error = false;
+
     private static final String LANGUAGE_PATTERN = "^(fr|us|en|de|es|it)$";
     private static final String HOSTNAME_PATTERN = "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$";
     private static final String USERNAME_PATTERN = "^[a-z_][a-z0-9_-]{0,31}$";
@@ -147,100 +150,60 @@ public class CydraInstaller {
 
         int currentField = 0;
         boolean completed = false;
-        configureTerminal();
 
-        try {
-            while (!completed) {
-                ui.clearAndShowFullScreen();
-                showUserInfoHeader();
-                showUserInfoForm(fields, descriptions, currentField);
+        CLIMultipleQuestionsHandler handler = new CLIMultipleQuestionsHandler();
+        handler.setMultipleSelectionMode(true);
 
-                String input = readKey();
+        while (!completed) {
+            ui.clearAndShowFullScreen();
+            showUserInfoHeader();
+            showUserInfoForm(fields, descriptions, currentField);
 
-                switch (input) {
-                    case "up":
-                        currentField = Math.max(0, currentField - 1);
-                        break;
-                    case "down":
-                        currentField = Math.min(fields.length - 1, currentField + 1);
-                        break;
-                    case "enter":
-                        if (editField(currentField)) {
-                            updateFieldDisplay(fields, currentField);
-                        }
-                        break;
-                    case "confirm":
-                        if (validateUserInfo()) {
-                            completed = true;
-                        }
-                        break;
-                    case "quit":
-                        if (ui.confirmAction("Are you sure you want to cancel the installation?")) {
-                            System.exit(0);
-                        }
-                        break;
-                }
-            }
-        } finally {
-            restoreTerminal();
-        }
-    }
+            String autoInput = handler.getNextInput();
+            String input;
 
-    private void configureTerminal() {
-        try {
-            Runtime.getRuntime().exec(new String[]{"stty", "-g"}).waitFor();
-            Runtime.getRuntime().exec(new String[]{"stty", "raw", "-echo"}).waitFor();
-        } catch (Exception e) {
-            System.err.println("Note: Arrow keys may not work properly in this terminal");
-        }
-    }
-
-    private void restoreTerminal() {
-        try {
-            Runtime.getRuntime().exec(new String[]{"stty", "sane"}).waitFor();
-        } catch (Exception e) {}
-    }
-
-    private String readKey() {
-        try {
-            int input = System.in.read();
-
-            if (input == 27) {
-                int next1 = System.in.read();
-                int next2 = System.in.read();
-                if (next1 == 91) {
-                    switch (next2) {
-                        case 65: return "up";    // A
-                        case 66: return "down";  // B
-                        case 67: return "right"; // C
-                        case 68: return "left";  // D
-                    }
-                }
-                return "unknown";
+            if (autoInput != null) {
+                input = autoInput;
+                System.out.println("Auto-detected: " + input);
+            } else {
+                input = getUserInfoInput();
             }
 
             switch (input) {
-                case 13:
-                case 10: return "enter";
-                case 'c':
-                case 'C': return "confirm";
-                case 'q':
-                case 'Q': return "quit";
-                case ' ': return "enter";
-                case 3:
-                case 27: return "quit";
+                case "up":
+                    currentField = Math.max(0, currentField - 1);
+                    break;
+                case "down":
+                    currentField = Math.min(fields.length - 1, currentField + 1);
+                    break;
+                case "enter":
+                case "space":
+                    if (editField(currentField)) {
+                        updateFieldDisplay(fields, currentField);
+                        if (currentField < fields.length - 1) {
+                            currentField++;
+                        }
+                    }
+                    break;
+                case "confirm":
+                    if (validateUserInfo()) {
+                        completed = true;
+                    }
+                    break;
+                case "quit":
+                    if (ui.confirmAction("Are you sure you want to cancel the installation?")) {
+                        System.exit(0);
+                    }
+                    break;
             }
-
-            return "unknown";
-
-        } catch (IOException e) {
-            return "unknown";
         }
+
+        handler.setMultipleSelectionMode(false);
     }
 
     private void showUserInfoHeader() {
         System.out.println();
-        String header = "System Configuration - Use arrow keys to navigate, Enter to select, C to confirm";
+        String header = "System Configuration - Use arrow keys to navigate, Enter to edit, C to confirm";
         System.out.println(ui.centerText(header, ui.getTerminalWidth()));
         System.out.println();
     }
@@ -249,7 +212,7 @@ public class CydraInstaller {
         int terminalWidth = ui.getTerminalWidth();
         int boxWidth = Math.min(terminalWidth - 10, 70);
 
-        String border = "#" + "#".repeat(Math.max(0, boxWidth - 2)) + "#";
+        String border = createBorder(boxWidth, "#");
         String middle = "|" + " ".repeat(Math.max(0, boxWidth - 2)) + "|";
 
         System.out.println(ui.centerText(border, terminalWidth));
@@ -274,8 +237,13 @@ public class CydraInstaller {
         System.out.println(ui.centerText(border, terminalWidth));
 
         System.out.println();
-        String help = "ARROWS: Navigate  ENTER: Select  C: Confirm  Q: Quit";
+        String help = "UP/DOWN: Navigate  ENTER: Edit  C: Confirm  Q: Quit";
         System.out.println(ui.centerText(help, terminalWidth));
+    }
+
+    private String createBorder(int boxWidth, String character) {
+        int safeWidth = Math.max(2, boxWidth);
+        return character + character.repeat(Math.max(0, safeWidth - 2)) + character;
     }
 
     private String createFieldLine(String field, boolean isSelected, int boxWidth) {
@@ -298,6 +266,41 @@ public class CydraInstaller {
         String content = "CONFIRM AND CONTINUE";
         int padding = Math.max(0, boxWidth - prefix.length() - content.length() - 1);
         return prefix + content + " ".repeat(padding) + "|";
+    }
+
+    private String getUserInfoInput() {
+        try {
+            while (System.in.available() > 0) {
+                System.in.read();
+            }
+
+            int input = System.in.read();
+            if (input == 27) {
+                if (System.in.available() >= 2) {
+                    int next1 = System.in.read();
+                    int next2 = System.in.read();
+                    if (next1 == 91) {
+                        if (next2 == 65) return "up";
+                        if (next2 == 66) return "down";
+                    }
+                }
+            } else if (input == 10 || input == 13) {
+                return "enter";
+            } else if (input == 'c' || input == 'C') {
+                return "confirm";
+            } else if (input == 'q' || input == 'Q') {
+                return "quit";
+            }
+        } catch (IOException e) {}
+
+        System.out.print("\nCommand (u=up, d=down, e=enter, c=confirm, q=quit): ");
+        String fallback = ui.scanner.nextLine().trim().toLowerCase();
+        if (fallback.equals("u")) return "up";
+        if (fallback.equals("d")) return "down";
+        if (fallback.equals("e")) return "enter";
+        if (fallback.equals("c")) return "confirm";
+        if (fallback.equals("q")) return "quit";
+        return "enter";
     }
 
     private boolean editField(int fieldIndex) {

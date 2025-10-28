@@ -16,6 +16,7 @@ public class CydraInstaller {
     private String networkName;
     private String networkPassword;
     private String language;
+    public static boolean error = false;
 
     public CydraInstaller() {
         this.scanner = new Scanner(System.in);

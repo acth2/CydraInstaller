@@ -13,6 +13,7 @@ public class InstallerUI {
     private static final String RED = "\033[0;31m";
     private static final String BLUE = "\u001B[34m";
     private static final String GREEN = "\u001B[32m";
+    private static final String YELLOW = "\u001B[33m";
 
     private Scanner scanner;
     private int totalSections = 8;
@@ -60,6 +61,12 @@ public class InstallerUI {
         System.out.println();
     }
 
+    public void showWarning(String warning) {
+        System.out.println();
+        System.out.println(YELLOW + "⚠ " + warning + RESET);
+        System.out.println();
+    }
+
     public void showError(String error) {
         CydraInstaller.error = true;
         clearAndShowFullScreen();
@@ -76,55 +83,112 @@ public class InstallerUI {
         String[] lines = splitMessage(message, Math.min(terminalWidth - 10, 70));
         showContentBox(lines);
 
-        System.out.println();
-        System.out.print("(y/n): ");
-        String response = scanner.nextLine().trim().toLowerCase();
-        return response.equals("y") || response.equals("yes");
-    }
-
-    public String getInput(String prompt) {
-        clearAndShowFullScreen();
-
-        String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
-        showContentBox(lines);
-
-        System.out.println();
-        System.out.print("> ");
-        String input = scanner.nextLine().trim();
-
-        if (!input.isEmpty()) {
-            showInlineMessage("Set to: " + input);
+        while (true) {
+            System.out.println();
+            System.out.print("(y/n): ");
+            String response = scanner.nextLine().trim().toLowerCase();
+            if (response.equals("y") || response.equals("yes")) {
+                return true;
+            } else if (response.equals("n") || response.equals("no")) {
+                return false;
+            }
+            System.out.println(RED + "Please enter 'y' for yes or 'n' for no." + RESET);
         }
-
-        return input;
     }
 
-    public String getInputWithoutConfirmation(String prompt) {
-        clearAndShowFullScreen();
+    public String getInput(String prompt, String validationRegex, String errorMessage) {
+        while (true) {
+            clearAndShowFullScreen();
 
-        String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
-        showContentBox(lines);
+            String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
+            showContentBox(lines);
 
-        System.out.println();
-        System.out.print("> ");
-        return scanner.nextLine().trim();
+            System.out.println();
+            System.out.print("> ");
+            String input = scanner.nextLine().trim();
+
+            if (input.isEmpty()) {
+                showWarning("Input cannot be empty. Please try again.");
+                continue;
+            }
+
+            if (validationRegex == null || input.matches(validationRegex)) {
+                if (!input.isEmpty()) {
+                    showInlineMessage("Set to: " + input);
+                }
+                return input;
+            } else {
+                showWarning(errorMessage);
+            }
+        }
+    }
+
+    public String getInputWithoutConfirmation(String prompt, String validationRegex, String errorMessage) {
+        while (true) {
+            clearAndShowFullScreen();
+
+            String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
+            showContentBox(lines);
+
+            System.out.println();
+            System.out.print("> ");
+            String input = scanner.nextLine().trim();
+
+            if (input.isEmpty()) {
+                showWarning("Input cannot be empty. Please try again.");
+                continue;
+            }
+
+            if (validationRegex == null || input.matches(validationRegex)) {
+                return input;
+            } else {
+                showWarning(errorMessage);
+            }
+        }
     }
 
     public String getPassword(String prompt) {
-        clearAndShowFullScreen();
+        while (true) {
+            clearAndShowFullScreen();
 
-        String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
-        showContentBox(lines);
+            String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
+            showContentBox(lines);
 
-        System.out.println();
-        System.out.print("> ");
+            System.out.println();
+            System.out.print("> ");
 
-        Console console = System.console();
-        if (console != null) {
-            char[] passwordChars = console.readPassword();
-            return new String(passwordChars);
-        } else {
-            return scanner.nextLine().trim();
+            String password;
+            Console console = System.console();
+            if (console != null) {
+                char[] passwordChars = console.readPassword();
+                password = new String(passwordChars);
+            } else {
+                password = scanner.nextLine().trim();
+            }
+
+            if (password.length() < 4) {
+                showWarning("Password must be at least 4 characters long. Please try again.");
+                continue;
+            }
+
+            String[] confirmLines = splitMessage("Please confirm your password", Math.min(terminalWidth - 10, 70));
+            showContentBox(confirmLines);
+            System.out.println();
+            System.out.print("> ");
+
+            String confirmPassword;
+            if (console != null) {
+                char[] confirmChars = console.readPassword();
+                confirmPassword = new String(confirmChars);
+            } else {
+                confirmPassword = scanner.nextLine().trim();
+            }
+
+            if (password.equals(confirmPassword)) {
+                return password;
+            } else {
+                showWarning("Passwords do not match. Please try again.");
+            }
         }
     }
 
@@ -149,7 +213,7 @@ public class InstallerUI {
                     return selected;
                 }
             } catch (NumberFormatException e) {}
-            System.out.println("Invalid selection. Please try again.");
+            System.out.println(RED + "Invalid selection. Please enter a number between 1 and " + options.size() + "." + RESET);
         }
     }
 
@@ -179,9 +243,9 @@ public class InstallerUI {
             System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
             System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
         } else {
-            System.out.println(RESET + WHITE_BOLD + headerLine + RESET);
-            System.out.println(RESET + WHITE_BOLD + centerText("CydraLite Installer encountered an error.", terminalWidth) + RESET);
-            System.out.println(RESET + WHITE_BOLD + headerLine + RESET);
+            System.out.println(RED + WHITE_BOLD + headerLine + RESET);
+            System.out.println(RED + WHITE_BOLD + centerText("CydraLite Installer encountered an error.", terminalWidth) + RESET);
+            System.out.println(RED + WHITE_BOLD + headerLine + RESET);
         }
     }
 

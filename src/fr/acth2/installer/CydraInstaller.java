@@ -16,7 +16,14 @@ public class CydraInstaller {
     private String networkName;
     private String networkPassword;
     private String language;
+    private String timezone;
     public static boolean error = false;
+
+    // Validation patterns
+    private static final String LANGUAGE_PATTERN = "^(fr|us|en)$";
+    private static final String HOSTNAME_PATTERN = "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$";
+    private static final String USERNAME_PATTERN = "^[a-z_][a-z0-9_-]{0,31}$";
+    private static final String TIMEZONE_PATTERN = "^[A-Za-z]+/[A-Za-z_]+$";
 
     public CydraInstaller() {
         this.scanner = new Scanner(System.in);
@@ -88,16 +95,46 @@ public class CydraInstaller {
     private void getUserInfos() {
         ui.showSection("GET USER INFOS");
 
-        language = ui.getInput("Enter language name (fr / us)");
-        machineName = ui.getInput("Enter machine name");
-        username = ui.getInput("Enter your username");
+        language = ui.getInput(
+                "Enter language (fr / us / en)",
+                LANGUAGE_PATTERN,
+                "Invalid language. Please enter 'fr', 'us', or 'en'."
+        );
 
-        password = ui.getPassword("Enter machine password");
+        machineName = ui.getInput(
+                "Enter machine name (hostname)",
+                HOSTNAME_PATTERN,
+                "Invalid hostname. Must start with letter/number, contain only letters, numbers, and hyphens, max 63 characters."
+        );
+
+        username = ui.getInput(
+                "Enter your username",
+                USERNAME_PATTERN,
+                "Invalid username. Must start with lowercase letter or underscore, contain only lowercase letters, numbers, hyphens, and underscores, max 32 characters."
+        );
+
+        password = ui.getPassword("Enter machine password (min 4 characters)");
+
+        // Timezone selection
+        List<String> timezones = Arrays.asList(
+                "Europe/Paris", "America/New_York", "America/Los_Angeles",
+                "Europe/London", "Asia/Tokyo", "Australia/Sydney"
+        );
+        timezone = ui.selectFromList("Select your timezone", timezones);
 
         isWireless = ui.confirmAction("Does the system should use Wireless connection?");
         if (isWireless) {
-            networkName = ui.getInput("Enter network name");
-            networkPassword = ui.getPassword("Enter network password");
+            networkName = ui.getInputWithoutConfirmation(
+                    "Enter network name (SSID)",
+                    "^.{1,32}$",
+                    "Network name must be between 1 and 32 characters."
+            );
+
+            networkPassword = ui.getInputWithoutConfirmation(
+                    "Enter network password",
+                    "^.{8,64}$",
+                    "Network password must be between 8 and 64 characters."
+            );
         }
     }
 
@@ -115,12 +152,29 @@ public class CydraInstaller {
 
             if (isEfiSystem()) {
                 List<String> efiDevices = getEfiDevices(devices, chosenPartition);
+                if (efiDevices.isEmpty()) {
+                    ui.showError("No suitable EFI devices found.");
+                    System.exit(1);
+                }
                 efiPartition = ui.selectFromList("Select the EFI Device", efiDevices);
             }
 
             chosenPartition = "/dev/" + chosenPartition;
             if (efiPartition != null) {
                 efiPartition = "/dev/" + efiPartition;
+            }
+
+            // Show confirmation with selected devices
+            StringBuilder confirmation = new StringBuilder();
+            confirmation.append("Selected devices:\n");
+            confirmation.append("System: ").append(chosenPartition).append("\n");
+            if (efiPartition != null) {
+                confirmation.append("EFI: ").append(efiPartition).append("\n");
+            }
+            confirmation.append("\nThese devices will be formatted. Continue?");
+
+            if (!ui.confirmAction(confirmation.toString())) {
+                diskPartition(); // Restart disk selection
             }
 
         } catch (Exception e) {
@@ -135,18 +189,20 @@ public class CydraInstaller {
 
         String line;
         while ((line = reader.readLine()) != null) {
-            if (!line.matches("^(loop0|sr0|name)$") && !line.isEmpty()) {
+            if (!line.matches("^(loop[0-9]+|sr[0-9]+|name|ram[0-9]+)$") && !line.isEmpty() && line.matches("^[a-z]+[a-z0-9]*$")) {
                 devices.add(line);
             }
         }
 
+        // Sort devices for better readability
+        Collections.sort(devices);
         return devices;
     }
 
     private List<String> getEfiDevices(List<String> devices, String exclude) {
         List<String> efiDevices = new ArrayList<>();
         for (String device : devices) {
-            if (!device.equals(exclude)) {
+            if (!device.equals(exclude) && !device.matches(".*[0-9]$")) {
                 efiDevices.add(device);
             }
         }
@@ -165,7 +221,10 @@ public class CydraInstaller {
             Files.createDirectories(Paths.get("/mnt/temp"));
 
             Process process = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", chosenPartition});
-            process.waitFor();
+            int result = process.waitFor();
+            if (result != 0) {
+                throw new IOException("mkfs.ext4 failed with exit code: " + result);
+            }
             ui.showMessage("The partition " + chosenPartition + " has been set to ext4 Partition.");
 
         } catch (Exception e) {
@@ -193,19 +252,28 @@ public class CydraInstaller {
             createNewEfiPartition(efiPartition);
         }
 
-        Runtime.getRuntime().exec(new String[]{"mkfs.vfat", "-F", "32", efiPartition + "1"}).waitFor();
+        Process fatProcess = Runtime.getRuntime().exec(new String[]{"mkfs.vfat", "-F", "32", efiPartition + "1"});
+        if (fatProcess.waitFor() != 0) {
+            throw new IOException("Failed to format EFI partition as FAT32");
+        }
 
         Files.createDirectories(Paths.get("/mnt/efi"));
-        Runtime.getRuntime().exec(new String[]{"mount", efiPartition + "1", "/mnt/efi"}).waitFor();
+        Process mountProcess = Runtime.getRuntime().exec(new String[]{"mount", efiPartition + "1", "/mnt/efi"});
+        if (mountProcess.waitFor() != 0) {
+            throw new IOException("Failed to mount EFI partition");
+        }
 
         ui.showMessage("The partition " + efiPartition + "1 has been formatted as FAT32.");
 
-        Runtime.getRuntime().exec(new String[]{
+        Process grubProcess = Runtime.getRuntime().exec(new String[]{
                 "grub-install", efiPartition + "1",
                 "--root-directory=/mnt/efi",
                 "--target=x86_64-efi",
                 "--removable"
-        }).waitFor();
+        });
+        if (grubProcess.waitFor() != 0) {
+            throw new IOException("GRUB installation failed");
+        }
     }
 
     private void createEfiPartition(String partition) throws IOException, InterruptedException {
@@ -219,7 +287,9 @@ public class CydraInstaller {
             writer.println();
             writer.println("w");
         }
-        process.waitFor();
+        if (process.waitFor() != 0) {
+            throw new IOException("fdisk operation failed");
+        }
     }
 
     private void createNewEfiPartition(String device) throws IOException, InterruptedException {
@@ -232,7 +302,9 @@ public class CydraInstaller {
             writer.println();
             writer.println("w");
         }
-        process.waitFor();
+        if (process.waitFor() != 0) {
+            throw new IOException("fdisk operation failed");
+        }
     }
 
     private void installCydra() {
@@ -270,24 +342,32 @@ public class CydraInstaller {
             writer.println();
             writer.println("w");
         }
-        process.waitFor();
+        if (process.waitFor() != 0) {
+            throw new IOException("Partition creation failed");
+        }
     }
 
     private void formatPartition(String partition) throws IOException, InterruptedException {
         Process process = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", partition});
-        process.waitFor();
+        if (process.waitFor() != 0) {
+            throw new IOException("Formatting partition failed");
+        }
     }
 
     private void mountPartition(String partition, String mountPoint) throws IOException, InterruptedException {
         Process process = Runtime.getRuntime().exec(new String[]{"mount", "-t", "ext4", partition, mountPoint});
-        process.waitFor();
+        if (process.waitFor() != 0) {
+            throw new IOException("Mounting partition failed");
+        }
     }
 
     private void extractSystem() throws IOException, InterruptedException {
         Process process = Runtime.getRuntime().exec(new String[]{
                 "tar", "xf", "/root/system.tar.gz", "-C", "/mnt/install"
         });
-        process.waitFor();
+        if (process.waitFor() != 0) {
+            throw new IOException("System extraction failed");
+        }
     }
 
     private void configureSystem() throws IOException {
@@ -308,6 +388,17 @@ public class CydraInstaller {
         Files.write(Paths.get("/mnt/install/etc/hostname"),
                 Collections.singletonList(machineName));
 
+        // Set timezone
+        Path localtimePath = Paths.get("/mnt/install/etc/localtime");
+        if (!Files.exists(localtimePath)) {
+            Files.createSymbolicLink(localtimePath, Paths.get("/usr/share/zoneinfo/" + timezone));
+        }
+
+        // Set language
+        Path localeConfPath = Paths.get("/mnt/install/etc/locale.conf");
+        String locale = "LANG=" + (language.equals("fr") ? "fr_FR.UTF-8" : "en_US.UTF-8");
+        Files.write(localeConfPath, Collections.singletonList(locale));
+
         if (isWireless) {
             configureWirelessNetwork();
         }
@@ -316,10 +407,29 @@ public class CydraInstaller {
     private String getPartitionUuid(String partition) throws IOException {
         Process process = Runtime.getRuntime().exec(new String[]{"blkid", "-s", "UUID", "-o", "value", partition});
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        return reader.readLine();
+        String uuid = reader.readLine();
+        if (uuid == null) {
+            throw new IOException("Could not get UUID for partition: " + partition);
+        }
+        return uuid;
     }
 
     private void configureWirelessNetwork() throws IOException {
+        // Create basic wireless configuration
+        Path wpaSupplicantPath = Paths.get("/mnt/install/etc/wpa_supplicant/wpa_supplicant.conf");
+        Files.createDirectories(wpaSupplicantPath.getParent());
+
+        List<String> wpaConfig = Arrays.asList(
+                "ctrl_interface=/var/run/wpa_supplicant",
+                "update_config=1",
+                "",
+                "network={",
+                "    ssid=\"" + networkName + "\"",
+                "    psk=\"" + networkPassword + "\"",
+                "}"
+        );
+
+        Files.write(wpaSupplicantPath, wpaConfig);
         ui.showMessage("Wireless network configuration completed");
     }
 
@@ -329,10 +439,19 @@ public class CydraInstaller {
         Process ddProcess = Runtime.getRuntime().exec(new String[]{
                 "dd", "if=/dev/zero", "of=" + swapfilePath.toString(), "bs=1M", "count=2048"
         });
-        ddProcess.waitFor();
+        if (ddProcess.waitFor() != 0) {
+            throw new IOException("Swap file creation failed");
+        }
 
-        Runtime.getRuntime().exec(new String[]{"chmod", "600", swapfilePath.toString()}).waitFor();
-        Runtime.getRuntime().exec(new String[]{"mkswap", swapfilePath.toString()}).waitFor();
+        Process chmodProcess = Runtime.getRuntime().exec(new String[]{"chmod", "600", swapfilePath.toString()});
+        if (chmodProcess.waitFor() != 0) {
+            throw new IOException("Failed to set swap file permissions");
+        }
+
+        Process mkswapProcess = Runtime.getRuntime().exec(new String[]{"mkswap", swapfilePath.toString()});
+        if (mkswapProcess.waitFor() != 0) {
+            throw new IOException("Failed to initialize swap space");
+        }
 
         ui.showMessage("a 2GB swapfile is created.. (" + chosenPartition + ")");
     }
@@ -341,11 +460,16 @@ public class CydraInstaller {
         ui.showSection("CLEANING LIVECD BEFORE REBOOTING");
 
         try {
-            Runtime.getRuntime().exec(new String[]{"umount", "/mnt/install"}).waitFor();
+            Process umountInstall = Runtime.getRuntime().exec(new String[]{"umount", "/mnt/install"});
+            umountInstall.waitFor();
+
             if (efiPartition != null) {
-                Runtime.getRuntime().exec(new String[]{"umount", "/mnt/efi"}).waitFor();
+                Process umountEfi = Runtime.getRuntime().exec(new String[]{"umount", "/mnt/efi"});
+                umountEfi.waitFor();
             }
-            Runtime.getRuntime().exec(new String[]{"umount", "/mnt/temp"}).waitFor();
+
+            Process umountTemp = Runtime.getRuntime().exec(new String[]{"umount", "/mnt/temp"});
+            umountTemp.waitFor();
 
             ui.showMessage("Cleanup completed");
         } catch (Exception e) {

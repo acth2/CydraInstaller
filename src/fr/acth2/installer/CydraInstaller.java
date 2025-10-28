@@ -3,6 +3,7 @@ package fr.acth2.installer;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import java.security.SecureRandom;
 
 public class CydraInstaller {
     private Scanner scanner;
@@ -17,13 +18,19 @@ public class CydraInstaller {
     private String networkPassword;
     private String language;
     private String timezone;
+    private String keyboardLayout;
+    private boolean enableSwap;
+    private int swapSize;
+    private boolean enableFirewall;
+    private boolean enableSSH;
+    private String rootPassword;
     public static boolean error = false;
 
-    // Validation patterns
-    private static final String LANGUAGE_PATTERN = "^(fr|us|en)$";
+    private static final String LANGUAGE_PATTERN = "^(fr|us|en|de|es|it)$";
     private static final String HOSTNAME_PATTERN = "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$";
     private static final String USERNAME_PATTERN = "^[a-z_][a-z0-9_-]{0,31}$";
     private static final String TIMEZONE_PATTERN = "^[A-Za-z]+/[A-Za-z_]+$";
+    private static final String KEYBOARD_PATTERN = "^(us|fr|de|es|it|uk)$";
 
     public CydraInstaller() {
         this.scanner = new Scanner(System.in);
@@ -37,6 +44,7 @@ public class CydraInstaller {
 
     public void run() {
         try {
+            checkRootPrivileges();
             ui.updateProgress(0);
             ui.showWelcome();
             showInformations();
@@ -59,17 +67,32 @@ public class CydraInstaller {
                         installCydra();
                         ui.updateProgress(7);
 
-                        cleanLive();
+                        createUserAccount();
                         ui.updateProgress(8);
 
+                        systemConfiguration();
+                        ui.updateProgress(9);
+
+                        cleanLive();
+                        ui.updateProgress(10);
+
                         ui.showMessage("The Installation is finished, thanks for using CydraLite !");
+                        offerReboot();
                     }
                 }
             }
         } catch (Exception e) {
             ui.showError("Installation failed: " + e.getMessage());
+            e.printStackTrace();
         } finally {
             scanner.close();
+        }
+    }
+
+    private void checkRootPrivileges() {
+        if (!System.getProperty("user.name").equals("root")) {
+            ui.showError("This installer must be run as root!");
+            System.exit(1);
         }
     }
 
@@ -90,15 +113,25 @@ public class CydraInstaller {
         ui.showMessage("Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE");
         ui.showMessage("Installer code on: https://github.com/acth2/CydraInstaller");
         ui.showMessage("Thanks to the LFS & BLFS team for everything !");
+
+        if (!ui.confirmAction("This installer will set up CydraLite on your system.\nContinue?")) {
+            System.exit(0);
+        }
     }
 
     private void getUserInfos() {
         ui.showSection("GET USER INFOS");
 
         language = ui.getInput(
-                "Enter language (fr / us / en)",
+                "Enter language (fr / us / en / de / es / it)",
                 LANGUAGE_PATTERN,
-                "Invalid language. Please enter 'fr', 'us', or 'en'."
+                "Invalid language. Please enter 'fr', 'us', 'en', 'de', 'es', or 'it'."
+        );
+
+        keyboardLayout = ui.getInput(
+                "Enter keyboard layout (us, fr, de, es, it, uk)",
+                KEYBOARD_PATTERN,
+                "Invalid keyboard layout."
         );
 
         machineName = ui.getInput(
@@ -113,14 +146,22 @@ public class CydraInstaller {
                 "Invalid username. Must start with lowercase letter or underscore, contain only lowercase letters, numbers, hyphens, and underscores, max 32 characters."
         );
 
-        password = ui.getPassword("Enter machine password (min 4 characters)");
+        password = ui.getPassword("Enter user password (min 4 characters)");
+        rootPassword = ui.getPassword("Enter root password (min 4 characters)");
 
-        // Timezone selection
         List<String> timezones = Arrays.asList(
                 "Europe/Paris", "America/New_York", "America/Los_Angeles",
-                "Europe/London", "Asia/Tokyo", "Australia/Sydney"
+                "Europe/London", "Asia/Tokyo", "Australia/Sydney",
+                "Europe/Berlin", "Europe/Madrid", "Europe/Rome"
         );
         timezone = ui.selectFromList("Select your timezone", timezones);
+
+        enableSwap = ui.confirmAction("Enable swap file?");
+        if (enableSwap) {
+            List<String> swapSizes = Arrays.asList("1GB", "2GB", "4GB", "8GB");
+            String selectedSwap = ui.selectFromList("Select swap size", swapSizes);
+            swapSize = Integer.parseInt(selectedSwap.replace("GB", ""));
+        }
 
         isWireless = ui.confirmAction("Does the system should use Wireless connection?");
         if (isWireless) {
@@ -136,6 +177,9 @@ public class CydraInstaller {
                     "Network password must be between 8 and 64 characters."
             );
         }
+
+        enableFirewall = ui.confirmAction("Enable basic firewall?");
+        enableSSH = ui.confirmAction("Enable SSH server?");
     }
 
     private void diskPartition() {
@@ -164,7 +208,6 @@ public class CydraInstaller {
                 efiPartition = "/dev/" + efiPartition;
             }
 
-            // Show confirmation with selected devices
             StringBuilder confirmation = new StringBuilder();
             confirmation.append("Selected devices:\n");
             confirmation.append("System: ").append(chosenPartition).append("\n");
@@ -174,7 +217,7 @@ public class CydraInstaller {
             confirmation.append("\nThese devices will be formatted. Continue?");
 
             if (!ui.confirmAction(confirmation.toString())) {
-                diskPartition(); // Restart disk selection
+                diskPartition();
             }
 
         } catch (Exception e) {
@@ -184,17 +227,17 @@ public class CydraInstaller {
 
     private List<String> getDevices() throws IOException {
         List<String> devices = new ArrayList<>();
-        Process process = Runtime.getRuntime().exec("awk '{print $4}' /proc/partitions");
+        Process process = Runtime.getRuntime().exec("lsblk -ndo NAME -e 7,11");
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 
         String line;
         while ((line = reader.readLine()) != null) {
-            if (!line.matches("^(loop[0-9]+|sr[0-9]+|name|ram[0-9]+)$") && !line.isEmpty() && line.matches("^[a-z]+[a-z0-9]*$")) {
+            line = line.trim();
+            if (!line.isEmpty() && !line.matches("^(loop[0-9]+|sr[0-9]+)$")) {
                 devices.add(line);
             }
         }
 
-        // Sort devices for better readability
         Collections.sort(devices);
         return devices;
     }
@@ -237,11 +280,22 @@ public class CydraInstaller {
         try {
             if (!isEfiSystem()) {
                 ui.showMessage("GRUB will be installed on " + chosenPartition + "/boot for BIOS boot.");
+                installBiosGrub();
             } else {
                 configureEfiSystem();
             }
         } catch (Exception e) {
             ui.showError("Error during GRUB configuration: " + e.getMessage());
+        }
+    }
+
+    private void installBiosGrub() throws IOException, InterruptedException {
+        Process grubProcess = Runtime.getRuntime().exec(new String[]{
+                "grub-install", chosenPartition,
+                "--root-directory=/mnt/install"
+        });
+        if (grubProcess.waitFor() != 0) {
+            throw new IOException("GRUB installation failed");
         }
     }
 
@@ -285,6 +339,8 @@ public class CydraInstaller {
             writer.println("1");
             writer.println();
             writer.println();
+            writer.println("t");
+            writer.println("ef");
             writer.println("w");
         }
         if (process.waitFor() != 0) {
@@ -300,6 +356,8 @@ public class CydraInstaller {
             writer.println("1");
             writer.println();
             writer.println();
+            writer.println("t");
+            writer.println("ef");
             writer.println("w");
         }
         if (process.waitFor() != 0) {
@@ -323,7 +381,10 @@ public class CydraInstaller {
 
             extractSystem();
             configureSystem();
-            createSwapFile();
+
+            if (enableSwap) {
+                createSwapFile();
+            }
 
             ui.showMessage("Installation completed successfully");
 
@@ -376,31 +437,44 @@ public class CydraInstaller {
         Path fstabPath = Paths.get("/mnt/install/etc/fstab");
         Files.createDirectories(fstabPath.getParent());
 
-        List<String> fstabLines = Arrays.asList(
-                "#CydraLite FSTAB File, Make a backup if you want to modify it..",
-                "",
-                "UUID=" + chosenPartitionUuid + "     /            ext4    defaults            1     1",
-                "/swapfile                         swap         swap    pri=1               0     0"
-        );
+        List<String> fstabLines = new ArrayList<>();
+        fstabLines.add("#CydraLite FSTAB File, Make a backup if you want to modify it..");
+        fstabLines.add("");
+        fstabLines.add("UUID=" + chosenPartitionUuid + "     /            ext4    defaults            1     1");
+
+        if (enableSwap) {
+            fstabLines.add("/swapfile                         swap         swap    pri=1               0     0");
+        }
 
         Files.write(fstabPath, fstabLines);
 
         Files.write(Paths.get("/mnt/install/etc/hostname"),
                 Collections.singletonList(machineName));
 
-        // Set timezone
         Path localtimePath = Paths.get("/mnt/install/etc/localtime");
         if (!Files.exists(localtimePath)) {
             Files.createSymbolicLink(localtimePath, Paths.get("/usr/share/zoneinfo/" + timezone));
         }
 
-        // Set language
         Path localeConfPath = Paths.get("/mnt/install/etc/locale.conf");
-        String locale = "LANG=" + (language.equals("fr") ? "fr_FR.UTF-8" : "en_US.UTF-8");
+        String locale = "LANG=" + getLocaleForLanguage(language);
         Files.write(localeConfPath, Collections.singletonList(locale));
+
+        Path vconsolePath = Paths.get("/mnt/install/etc/vconsole.conf");
+        Files.write(vconsolePath, Collections.singletonList("KEYMAP=" + keyboardLayout));
 
         if (isWireless) {
             configureWirelessNetwork();
+        }
+    }
+
+    private String getLocaleForLanguage(String lang) {
+        switch (lang) {
+            case "fr": return "fr_FR.UTF-8";
+            case "de": return "de_DE.UTF-8";
+            case "es": return "es_ES.UTF-8";
+            case "it": return "it_IT.UTF-8";
+            default: return "en_US.UTF-8";
         }
     }
 
@@ -415,7 +489,6 @@ public class CydraInstaller {
     }
 
     private void configureWirelessNetwork() throws IOException {
-        // Create basic wireless configuration
         Path wpaSupplicantPath = Paths.get("/mnt/install/etc/wpa_supplicant/wpa_supplicant.conf");
         Files.createDirectories(wpaSupplicantPath.getParent());
 
@@ -437,7 +510,7 @@ public class CydraInstaller {
         Path swapfilePath = Paths.get("/mnt/install/swapfile");
 
         Process ddProcess = Runtime.getRuntime().exec(new String[]{
-                "dd", "if=/dev/zero", "of=" + swapfilePath.toString(), "bs=1M", "count=2048"
+                "dd", "if=/dev/zero", "of=" + swapfilePath.toString(), "bs=1M", "count=" + (swapSize * 1024)
         });
         if (ddProcess.waitFor() != 0) {
             throw new IOException("Swap file creation failed");
@@ -453,7 +526,81 @@ public class CydraInstaller {
             throw new IOException("Failed to initialize swap space");
         }
 
-        ui.showMessage("a 2GB swapfile is created.. (" + chosenPartition + ")");
+        ui.showMessage(swapSize + "GB swapfile is created.. (" + chosenPartition + ")");
+    }
+
+    private void createUserAccount() throws IOException, InterruptedException {
+        ui.showSection("CREATING USER ACCOUNT");
+
+        Process userAddProcess = Runtime.getRuntime().exec(new String[]{
+                "chroot", "/mnt/install", "useradd", "-m", "-G", "wheel", "-s", "/bin/bash", username
+        });
+        if (userAddProcess.waitFor() != 0) {
+            throw new IOException("Failed to create user account");
+        }
+
+        Process passwdProcess = Runtime.getRuntime().exec(new String[]{
+                "chroot", "/mnt/install", "chpasswd"
+        });
+        try (PrintWriter writer = new PrintWriter(passwdProcess.getOutputStream())) {
+            writer.println(username + ":" + password);
+            writer.println("root:" + rootPassword);
+        }
+        if (passwdProcess.waitFor() != 0) {
+            throw new IOException("Failed to set passwords");
+        }
+
+        ui.showMessage("User account created successfully");
+    }
+
+    private void systemConfiguration() throws IOException, InterruptedException {
+        ui.showSection("SYSTEM CONFIGURATION");
+
+        if (enableSSH) {
+            Process sshProcess = Runtime.getRuntime().exec(new String[]{
+                    "chroot", "/mnt/install", "systemctl", "enable", "sshd"
+            });
+            sshProcess.waitFor();
+        }
+
+        if (enableFirewall) {
+            configureFirewall();
+        }
+
+        Process hostidProcess = Runtime.getRuntime().exec(new String[]{
+                "chroot", "/mnt/install", "systemd-machine-id-setup"
+        });
+        hostidProcess.waitFor();
+
+        ui.showMessage("System configuration completed");
+    }
+
+    private void configureFirewall() throws IOException, InterruptedException {
+        Path firewallRules = Paths.get("/mnt/install/etc/iptables.rules");
+        List<String> rules = Arrays.asList(
+                "*filter",
+                ":INPUT DROP [0:0]",
+                ":FORWARD DROP [0:0]",
+                ":OUTPUT ACCEPT [0:0]",
+                ":TCP - [0:0]",
+                ":UDP - [0:0]",
+                "-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT",
+                "-A INPUT -i lo -j ACCEPT",
+                "-A INPUT -m conntrack --ctstate INVALID -j DROP",
+                "-A INPUT -p icmp -j ACCEPT",
+                "-A INPUT -p tcp -m tcp --dport 22 -j ACCEPT",
+                "-A INPUT -p udp -m udp --dport 5353 -j ACCEPT",
+                "-A INPUT -p tcp -m tcp --dport 80 -j ACCEPT",
+                "-A INPUT -p tcp -m tcp --dport 443 -j ACCEPT",
+                "-A INPUT -j REJECT --reject-with icmp-port-unreachable",
+                "COMMIT"
+        );
+        Files.write(firewallRules, rules);
+
+        Process enableFirewallProcess = Runtime.getRuntime().exec(new String[]{
+                "chroot", "/mnt/install", "systemctl", "enable", "iptables"
+        });
+        enableFirewallProcess.waitFor();
     }
 
     private void cleanLive() {
@@ -474,6 +621,19 @@ public class CydraInstaller {
             ui.showMessage("Cleanup completed");
         } catch (Exception e) {
             ui.showError("Error during cleanup: " + e.getMessage());
+        }
+    }
+
+    private void offerReboot() {
+        if (ui.confirmAction("Installation complete! Would you like to reboot now?")) {
+            try {
+                Process rebootProcess = Runtime.getRuntime().exec(new String[]{"reboot"});
+                rebootProcess.waitFor();
+            } catch (Exception e) {
+                ui.showMessage("Please reboot manually to start using CydraLite.");
+            }
+        } else {
+            ui.showMessage("Please remember to reboot to start using CydraLite.");
         }
     }
 }

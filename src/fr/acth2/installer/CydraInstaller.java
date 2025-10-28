@@ -151,7 +151,7 @@ public class CydraInstaller {
 
         int currentField = 0;
         boolean completed = false;
-        boolean quickSelectMode = true; // Set this to true for auto-advance
+        boolean quickSelectMode = true;
 
         while (!completed) {
             ui.clearAndShowFullScreen();
@@ -170,7 +170,6 @@ public class CydraInstaller {
                 case "enter":
                     if (editField(currentField)) {
                         updateFieldDisplay(fields, currentField);
-                        // Auto-advance to next field if quick select mode is enabled
                         if (quickSelectMode && currentField < fields.length - 1) {
                             currentField++;
                         }

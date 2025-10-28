@@ -21,6 +21,7 @@ public class InstallerUI {
     private int currentSection = 0;
     private int terminalWidth;
     private int terminalHeight;
+    private String currentSectionName;
 
     public InstallerUI() {
         this.scanner = new Scanner(System.in);
@@ -42,6 +43,7 @@ public class InstallerUI {
     }
 
     public void showSection(String sectionName) {
+        currentSectionName = sectionName;
         clearAndShowFullScreen();
 
         String[] content = {sectionName};
@@ -253,9 +255,15 @@ public class InstallerUI {
         updateTerminalSize();
         String headerLine = " ".repeat(terminalWidth);
         if (!CydraInstaller.error) {
-            System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
-            System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
-            System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+            if (currentSectionName.isEmpty()) {
+                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+                System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
+                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+            } else {
+                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+                System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer - " + currentSectionName, terminalWidth) + RESET);
+                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+            }
         } else {
             System.out.println(RED + WHITE_BOLD + headerLine + RESET);
             System.out.println(RED + WHITE_BOLD + centerText("CydraLite Installer encountered an error.", terminalWidth) + RESET);

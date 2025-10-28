@@ -29,14 +29,12 @@ public class CydraInstaller {
 
     public void run() {
         try {
+            ui.updateProgress(0);
             ui.showWelcome();
-            ui.updateProgress(1);
-
             showInformations();
-            ui.updateProgress(2);
 
             getUserInfos();
-            ui.updateProgress(3);
+            ui.updateProgress(1);
 
             diskPartition();
             ui.updateProgress(4);
@@ -80,18 +78,10 @@ public class CydraInstaller {
 
     private void showInformations() {
         ui.showSection("INFORMATIONS");
-        ui.showMessage("Welcome into CydraProject (Lite) installation guide!");
-        ui.waitForEnter();
 
         ui.showMessage("Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE");
         ui.showMessage("Installer code on: https://github.com/acth2/CydraInstaller");
-        ui.waitForEnter();
-
-        ui.showMessage("Thanks to AinTea for the first installer !");
-        ui.showMessage("Thanks to Emmett Syazwan for the LFS iso template");
         ui.showMessage("Thanks to the LFS & BLFS team for everything !");
-        ui.showMessage("Thanks to YOU for installing CydraLite !");
-        ui.waitForEnter();
     }
 
     private void getUserInfos() {

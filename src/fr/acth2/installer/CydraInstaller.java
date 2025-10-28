@@ -55,7 +55,7 @@ public class CydraInstaller {
             diskPartition();
             ui.updateProgress(4);
 
-            if (ui.confirmAction("The Installation will start. Continue?")) {
+            if (ui.confirmAction("The Installation will start.\n Continue?")) {
                 if (validateInputs()) {
                     if (ui.confirmAction("!! WARNING !!\n\nEVERY DATA ON THE DISK WILL BE ERASED.\nDo you want to continue?")) {
                         diskInstall();

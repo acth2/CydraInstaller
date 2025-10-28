@@ -150,13 +150,13 @@ public class CydraInstaller {
         boolean completed = false;
 
         while (!completed) {
-            clearAndShowFullScreen();
+            ui.clearAndShowFullScreen();
             showUserInfoHeader();
             showUserInfoForm(fields, descriptions, currentField);
 
             String input = getUserInfoInput();
 
-            switch (input.toLowerCase()) {
+            switch (input) {
                 case "up":
                     currentField = Math.max(0, currentField - 1);
                     break;
@@ -190,55 +190,80 @@ public class CydraInstaller {
     }
 
     private void showUserInfoForm(String[] fields, String[] descriptions, int currentField) {
-        int boxWidth = Math.min(ui.getTerminalWidth() - 10, 70);
-        String border = "#" + "#".repeat(boxWidth - 2) + "#";
-        String middle = "|" + " ".repeat(boxWidth - 2) + "|";
+        int terminalWidth = ui.getTerminalWidth();
+        int boxWidth = Math.min(terminalWidth - 10, 70);
 
-        System.out.println(ui.centerText(border, ui.getTerminalWidth()));
-        System.out.println(ui.centerText(middle, ui.getTerminalWidth()));
+        String border = createBorder(boxWidth, "#");
+        String middle = "|" + " ".repeat(Math.max(0, boxWidth - 2)) + "|";
+
+        System.out.println(ui.centerText(border, terminalWidth));
+        System.out.println(ui.centerText(middle, terminalWidth));
 
         for (int i = 0; i < fields.length; i++) {
-            String fieldLine;
-            if (i == currentField) {
-                fieldLine = "| > " + fields[i] + " ".repeat(boxWidth - fields[i].length() - 5) + "|";
-            } else {
-                fieldLine = "|   " + fields[i] + " ".repeat(boxWidth - fields[i].length() - 4) + "|";
-            }
-            System.out.println(ui.centerText(fieldLine, ui.getTerminalWidth()));
+            String fieldLine = createFieldLine(fields[i], i == currentField, boxWidth);
+            System.out.println(ui.centerText(fieldLine, terminalWidth));
 
             if (i == currentField) {
-                String descLine = "| " + descriptions[i] + " ".repeat(boxWidth - descriptions[i].length() - 3) + "|";
-                System.out.println(ui.centerText(descLine, ui.getTerminalWidth()));
-                System.out.println(ui.centerText(middle, ui.getTerminalWidth()));
+                String descLine = createDescriptionLine(descriptions[i], boxWidth);
+                System.out.println(ui.centerText(descLine, terminalWidth));
+                System.out.println(ui.centerText(middle, terminalWidth));
             }
         }
 
-        System.out.println(ui.centerText(middle, ui.getTerminalWidth()));
+        System.out.println(ui.centerText(middle, terminalWidth));
 
-        String confirmLine;
-        if (currentField == fields.length) {
-            confirmLine = "| > CONFIRM AND CONTINUE" + " ".repeat(boxWidth - 24) + "|";
-        } else {
-            confirmLine = "|   CONFIRM AND CONTINUE" + " ".repeat(boxWidth - 24) + "|";
-        }
-        System.out.println(ui.centerText(confirmLine, ui.getTerminalWidth()));
+        String confirmLine = createConfirmLine(currentField == fields.length, boxWidth);
+        System.out.println(ui.centerText(confirmLine, terminalWidth));
 
-        System.out.println(ui.centerText(border, ui.getTerminalWidth()));
+        System.out.println(ui.centerText(border, terminalWidth));
 
         System.out.println();
         String help = "UP/DOWN: Navigate  ENTER: Edit  C: Confirm  Q: Quit";
-        System.out.println(ui.centerText(help, ui.getTerminalWidth()));
+        System.out.println(ui.centerText(help, terminalWidth));
+    }
+
+    private String createBorder(int boxWidth, String character) {
+        int safeWidth = Math.max(2, boxWidth);
+        return character + character.repeat(Math.max(0, safeWidth - 2)) + character;
+    }
+
+    private String createFieldLine(String field, boolean isSelected, int boxWidth) {
+        String prefix = isSelected ? "| > " : "|   ";
+        int availableWidth = Math.max(0, boxWidth - prefix.length() - 1);
+        String content = field.length() > availableWidth ? field.substring(0, availableWidth) : field;
+        int padding = Math.max(0, availableWidth - content.length());
+        return prefix + content + " ".repeat(padding) + "|";
+    }
+
+    private String createDescriptionLine(String description, int boxWidth) {
+        int availableWidth = Math.max(0, boxWidth - 3);
+        String content = description.length() > availableWidth ? description.substring(0, availableWidth) : description;
+        int padding = Math.max(0, availableWidth - content.length());
+        return "| " + content + " ".repeat(padding) + "|";
+    }
+
+    private String createConfirmLine(boolean isSelected, int boxWidth) {
+        String prefix = isSelected ? "| > " : "|   ";
+        String content = "CONFIRM AND CONTINUE";
+        int padding = Math.max(0, boxWidth - prefix.length() - content.length() - 1);
+        return prefix + content + " ".repeat(padding) + "|";
     }
 
     private String getUserInfoInput() {
         try {
+            while (System.in.available() > 0) {
+                System.in.read();
+            }
+
             int input = System.in.read();
             if (input == 27) {
-                int next1 = System.in.read();
-                int next2 = System.in.read();
-                if (next1 == 91) {
-                    if (next2 == 65) return "up";
-                    if (next2 == 66) return "down";
+                if (System.in.available() >= 2) {
+                    int next1 = System.in.read();
+                    int next2 = System.in.read();
+                    if (next1 == 91) {
+                        if (next2 == 65) return "up";
+                        if (next2 == 66) return "down";
+                    }
                 }
             } else if (input == 10 || input == 13) {
                 return "enter";
@@ -247,12 +272,16 @@ public class CydraInstaller {
             } else if (input == 'q' || input == 'Q') {
                 return "quit";
             }
-        } catch (IOException e) {
-        }
+        } catch (IOException e) {}
 
-        System.out.print("\nEnter command (up/down/enter/confirm/quit): ");
+        System.out.print("\nCommand (u=up, d=down, e=enter, c=confirm, q=quit): ");
         String fallback = ui.scanner.nextLine().trim().toLowerCase();
-        return fallback.isEmpty() ? "enter" : fallback;
+        if (fallback.equals("u")) return "up";
+        if (fallback.equals("d")) return "down";
+        if (fallback.equals("e")) return "enter";
+        if (fallback.equals("c")) return "confirm";
+        if (fallback.equals("q")) return "quit";
+        return "enter";
     }
 
     private boolean editField(int fieldIndex) {
@@ -423,13 +452,6 @@ public class CydraInstaller {
         return true;
     }
 
-    private void clearAndShowFullScreen() {
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
-        ui.showHeader();
-        ui.showProgressBar();
-        System.out.println("\n");
-    }
     private void diskPartition() {
         ui.showSection("DISK PARTITIONING");
 

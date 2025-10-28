@@ -241,7 +241,7 @@ public class InstallerUI {
         updateTerminalSize();
     }
 
-    private void clearAndShowFullScreen() {
+    void clearAndShowFullScreen() {
         clearScreen();
         showHeader();
         showProgressBar();

@@ -259,16 +259,24 @@ public class CydraInstaller {
 
     private String getUserInfoInput() {
         try {
+            String[] cmd = {"/bin/sh", "-c", "stty raw -echo </dev/tty"};
+            Runtime.getRuntime().exec(cmd).waitFor();
+
             int key = System.in.read();
 
-            System.out.println();
+            cmd = new String[]{"/bin/sh", "-c", "stty cooked echo </dev/tty"};
+            Runtime.getRuntime().exec(cmd).waitFor();
+
             if (key == 27) {
-                if (System.in.available() >= 2) {
-                    System.in.read();
-                    int arrow = System.in.read();
-                    if (arrow == 65) return "up";
-                    if (arrow == 66) return "down";
+                if (System.in.available() > 0) {
+                    int next1 = System.in.read();
+                    int next2 = System.in.read();
+                    if (next1 == 91) {
+                        if (next2 == 65) return "up";
+                        if (next2 == 66) return "down";
+                    }
                 }
+                return "enter";
             } else if (key == 10 || key == 13) {
                 return "enter";
             } else if (key == 'c' || key == 'C') {
@@ -278,11 +286,21 @@ public class CydraInstaller {
             } else if (key == ' ') {
                 return "enter";
             }
-
             return "enter";
 
-        } catch (IOException e) {
-            System.out.println();
+        } catch (Exception e) {
+            try {
+                String[] cmd = {"/bin/sh", "-c", "stty cooked echo </dev/tty"};
+                Runtime.getRuntime().exec(cmd).waitFor();
+            } catch (Exception ex) {}
+
+            System.out.print("\nCommand (arrows=nav, enter=select, c=confirm, q=quit): ");
+            String input = ui.scanner.nextLine().trim().toLowerCase();
+            if (input.equals("u")) return "up";
+            if (input.equals("d")) return "down";
+            if (input.equals("e") || input.equals("")) return "enter";
+            if (input.equals("c")) return "confirm";
+            if (input.equals("q")) return "quit";
             return "enter";
         }
     }

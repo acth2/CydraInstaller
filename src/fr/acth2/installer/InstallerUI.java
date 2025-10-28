@@ -32,10 +32,14 @@ public class InstallerUI {
                 "Welcome to CydraLite Installer",
                 "This will guide you through the installation",
                 "",
-                "[suivant]"
+                "Press Enter to continue..."
         };
         showContentBox(content);
-        waitForEnter();
+
+        System.out.println();
+        String centeredPrompt = centerText("> ", terminalWidth);
+        System.out.print(centeredPrompt);
+        scanner.nextLine();
     }
 
     public void showSection(String sectionName) {
@@ -133,8 +137,13 @@ public class InstallerUI {
     }
 
     public void waitForEnter() {
+        clearAndShowFullScreen();
+
+        String[] content = {"Press Enter to continue..."};
+        showContentBox(content);
+
         System.out.println();
-        String centeredPrompt = centerText("Press Enter to continue...", terminalWidth);
+        String centeredPrompt = centerText("> ", terminalWidth);
         System.out.print(centeredPrompt);
         scanner.nextLine();
     }

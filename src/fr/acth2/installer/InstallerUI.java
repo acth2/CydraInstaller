@@ -15,7 +15,7 @@ public class InstallerUI {
     private static final String GREEN = "\u001B[32m";
     private static final String YELLOW = "\u001B[33m";
 
-    private Scanner scanner;
+    Scanner scanner;
     private int totalSections = 8;
     private int currentSection = 0;
     private int terminalWidth;
@@ -70,13 +70,13 @@ public class InstallerUI {
 
     public void showInlineMessage(String message) {
         System.out.println();
-        System.out.println(GREEN + "✓ " + message + RESET);
+        System.out.println(GREEN + message + RESET);
         System.out.println();
     }
 
     public void showWarning(String warning) {
         System.out.println();
-        System.out.println(YELLOW + "⚠ " + warning + RESET);
+        System.out.println(YELLOW + "/!\\ " + warning + RESET);
         System.out.println();
     }
 
@@ -248,7 +248,7 @@ public class InstallerUI {
         System.out.println("\n");
     }
 
-    private void showHeader() {
+    void showHeader() {
         updateTerminalSize();
         String headerLine = " ".repeat(terminalWidth);
         if (!CydraInstaller.error) {
@@ -262,7 +262,7 @@ public class InstallerUI {
         }
     }
 
-    private void showProgressBar() {
+    void showProgressBar() {
         System.out.println();
         int percentage = (currentSection * 100 / totalSections);
 
@@ -345,7 +345,7 @@ public class InstallerUI {
         return lines.toArray(new String[0]);
     }
 
-    private String centerText(String text, int width) {
+    String centerText(String text, int width) {
         if (text == null) return " ".repeat(width);
         if (text.length() >= width) {
             return text.substring(0, width);
@@ -401,6 +401,10 @@ public class InstallerUI {
             terminalWidth = 80;
             terminalHeight = 24;
         }
+    }
+
+    public int getTerminalWidth() {
+        return terminalWidth;
     }
 
     private void clearScreen() {

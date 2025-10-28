@@ -55,7 +55,7 @@ public class CydraInstaller {
             diskPartition();
             ui.updateProgress(4);
 
-            if (ui.confirmAction("The Installation will start.\n Continue?")) {
+            if (ui.confirmAction("Install the OS?")) {
                 if (validateInputs()) {
                     if (ui.confirmAction("!! WARNING !!\n\nEVERY DATA ON THE DISK WILL BE ERASED.\nDo you want to continue?")) {
                         diskInstall();
@@ -116,68 +116,320 @@ public class CydraInstaller {
     }
 
     private void getUserInfos() {
-        ui.showSection("GET USER INFOS");
+        ui.showSection("SYSTEM CONFIGURATION");
 
-        language = ui.getInput(
-                "Enter language (fr / us / en / de / es / it)",
-                LANGUAGE_PATTERN,
-                "Invalid language. Please enter 'fr', 'us', 'en', 'de', 'es', or 'it'."
-        );
+        String[] fields = {
+                "Language: " + (language != null ? language : "Not set"),
+                "Keyboard Layout: " + (keyboardLayout != null ? keyboardLayout : "Not set"),
+                "Machine Name: " + (machineName != null ? machineName : "Not set"),
+                "Username: " + (username != null ? username : "Not set"),
+                "User Password: " + (password != null ? "********" : "Not set"),
+                "Root Password: " + (rootPassword != null ? "********" : "Not set"),
+                "Timezone: " + (timezone != null ? timezone : "Not set"),
+                "Swap File: " + (enableSwap ? swapSize + "GB" : "Disabled"),
+                "Wireless: " + (isWireless ? "Enabled" : "Disabled"),
+                "Firewall: " + (enableFirewall ? "Enabled" : "Disabled"),
+                "SSH: " + (enableSSH ? "Enabled" : "Disabled")
+        };
 
-        keyboardLayout = ui.getInput(
-                "Enter keyboard layout (us, fr, de, es, it, uk)",
-                KEYBOARD_PATTERN,
-                "Invalid keyboard layout."
-        );
+        String[] descriptions = {
+                "System language for localization (fr/us/en/de/es/it)",
+                "Keyboard layout for console and X11 (us/fr/de/es/it/uk)",
+                "Hostname for the system (letters, numbers, hyphens, max 63 chars)",
+                "Your login username (lowercase, numbers, hyphens, underscores, max 32 chars)",
+                "Password for your user account (min 4 characters)",
+                "Password for root administrator account (min 4 characters)",
+                "System timezone for clock and time settings",
+                "Swap file size for memory management (1GB/2GB/4GB/8GB)",
+                "Enable wireless network connection",
+                "Enable basic firewall protection",
+                "Enable SSH remote access"
+        };
 
-        machineName = ui.getInput(
-                "Enter machine name (hostname)",
-                HOSTNAME_PATTERN,
-                "Invalid hostname. Must start with letter/number, contain only letters, numbers, and hyphens, max 63 characters."
-        );
+        int currentField = 0;
+        boolean completed = false;
 
-        username = ui.getInput(
-                "Enter your username",
-                USERNAME_PATTERN,
-                "Invalid username. Must start with lowercase letter or underscore, contain only lowercase letters, numbers, hyphens, and underscores, max 32 characters."
-        );
+        while (!completed) {
+            clearAndShowFullScreen();
+            showUserInfoHeader();
+            showUserInfoForm(fields, descriptions, currentField);
 
-        password = ui.getPassword("Enter user password (min 4 characters)");
-        rootPassword = ui.getPassword("Enter root password (min 4 characters)");
+            String input = getUserInfoInput();
 
-        List<String> timezones = Arrays.asList(
-                "Europe/Paris", "America/New_York", "America/Los_Angeles",
-                "Europe/London", "Asia/Tokyo", "Australia/Sydney",
-                "Europe/Berlin", "Europe/Madrid", "Europe/Rome"
-        );
-        timezone = ui.selectFromList("Select your timezone", timezones);
-
-        enableSwap = ui.confirmAction("Enable swap file?");
-        if (enableSwap) {
-            List<String> swapSizes = Arrays.asList("1GB", "2GB", "4GB", "8GB");
-            String selectedSwap = ui.selectFromList("Select swap size", swapSizes);
-            swapSize = Integer.parseInt(selectedSwap.replace("GB", ""));
+            switch (input.toLowerCase()) {
+                case "up":
+                    currentField = Math.max(0, currentField - 1);
+                    break;
+                case "down":
+                    currentField = Math.min(fields.length - 1, currentField + 1);
+                    break;
+                case "enter":
+                    if (editField(currentField)) {
+                        updateFieldDisplay(fields, currentField);
+                    }
+                    break;
+                case "confirm":
+                    if (validateUserInfo()) {
+                        completed = true;
+                    }
+                    break;
+                case "quit":
+                    if (ui.confirmAction("Are you sure you want to cancel the installation?")) {
+                        System.exit(0);
+                    }
+                    break;
+            }
         }
-
-        isWireless = ui.confirmAction("Does the system should use Wireless connection?");
-        if (isWireless) {
-            networkName = ui.getInputWithoutConfirmation(
-                    "Enter network name (SSID)",
-                    "^.{1,32}$",
-                    "Network name must be between 1 and 32 characters."
-            );
-
-            networkPassword = ui.getInputWithoutConfirmation(
-                    "Enter network password",
-                    "^.{8,64}$",
-                    "Network password must be between 8 and 64 characters."
-            );
-        }
-
-        enableFirewall = ui.confirmAction("Enable basic firewall?");
-        enableSSH = ui.confirmAction("Enable SSH server?");
     }
 
+    private void showUserInfoHeader() {
+        System.out.println();
+        String header = "System Configuration - Use arrow keys to navigate, Enter to edit, C to confirm";
+        System.out.println(ui.centerText(header, ui.getTerminalWidth()));
+        System.out.println();
+    }
+
+    private void showUserInfoForm(String[] fields, String[] descriptions, int currentField) {
+        int boxWidth = Math.min(ui.getTerminalWidth() - 10, 70);
+        String border = "#" + "#".repeat(boxWidth - 2) + "#";
+        String middle = "|" + " ".repeat(boxWidth - 2) + "|";
+
+        System.out.println(ui.centerText(border, ui.getTerminalWidth()));
+        System.out.println(ui.centerText(middle, ui.getTerminalWidth()));
+
+        for (int i = 0; i < fields.length; i++) {
+            String fieldLine;
+            if (i == currentField) {
+                fieldLine = "| > " + fields[i] + " ".repeat(boxWidth - fields[i].length() - 5) + "|";
+            } else {
+                fieldLine = "|   " + fields[i] + " ".repeat(boxWidth - fields[i].length() - 4) + "|";
+            }
+            System.out.println(ui.centerText(fieldLine, ui.getTerminalWidth()));
+
+            if (i == currentField) {
+                String descLine = "| " + descriptions[i] + " ".repeat(boxWidth - descriptions[i].length() - 3) + "|";
+                System.out.println(ui.centerText(descLine, ui.getTerminalWidth()));
+                System.out.println(ui.centerText(middle, ui.getTerminalWidth()));
+            }
+        }
+
+        System.out.println(ui.centerText(middle, ui.getTerminalWidth()));
+
+        String confirmLine;
+        if (currentField == fields.length) {
+            confirmLine = "| > CONFIRM AND CONTINUE" + " ".repeat(boxWidth - 24) + "|";
+        } else {
+            confirmLine = "|   CONFIRM AND CONTINUE" + " ".repeat(boxWidth - 24) + "|";
+        }
+        System.out.println(ui.centerText(confirmLine, ui.getTerminalWidth()));
+
+        System.out.println(ui.centerText(border, ui.getTerminalWidth()));
+
+        System.out.println();
+        String help = "UP/DOWN: Navigate  ENTER: Edit  C: Confirm  Q: Quit";
+        System.out.println(ui.centerText(help, ui.getTerminalWidth()));
+    }
+
+    private String getUserInfoInput() {
+        try {
+            int input = System.in.read();
+            if (input == 27) {
+                int next1 = System.in.read();
+                int next2 = System.in.read();
+                if (next1 == 91) {
+                    if (next2 == 65) return "up";
+                    if (next2 == 66) return "down";
+                }
+            } else if (input == 10 || input == 13) {
+                return "enter";
+            } else if (input == 'c' || input == 'C') {
+                return "confirm";
+            } else if (input == 'q' || input == 'Q') {
+                return "quit";
+            }
+        } catch (IOException e) {
+        }
+
+        System.out.print("\nEnter command (up/down/enter/confirm/quit): ");
+        String fallback = ui.scanner.nextLine().trim().toLowerCase();
+        return fallback.isEmpty() ? "enter" : fallback;
+    }
+
+    private boolean editField(int fieldIndex) {
+        switch (fieldIndex) {
+            case 0:
+                List<String> languages = Arrays.asList("fr", "us", "en", "de", "es", "it");
+                language = ui.selectFromList("Select system language", languages);
+                return true;
+
+            case 1:
+                List<String> layouts = Arrays.asList("us", "fr", "de", "es", "it", "uk");
+                keyboardLayout = ui.selectFromList("Select keyboard layout", layouts);
+                return true;
+
+            case 2:
+                machineName = ui.getInput(
+                        "Enter machine name (hostname)",
+                        HOSTNAME_PATTERN,
+                        "Invalid hostname. Must start with letter/number, contain only letters, numbers, and hyphens, max 63 characters."
+                );
+                return true;
+
+            case 3:
+                username = ui.getInput(
+                        "Enter your username",
+                        USERNAME_PATTERN,
+                        "Invalid username. Must start with lowercase letter or underscore, contain only lowercase letters, numbers, hyphens, and underscores, max 32 characters."
+                );
+                return true;
+
+            case 4:
+                password = ui.getPassword("Enter user password (min 4 characters)");
+                return true;
+
+            case 5:
+                rootPassword = ui.getPassword("Enter root password (min 4 characters)");
+                return true;
+
+            case 6:
+                List<String> timezones = Arrays.asList(
+                        "Europe/Paris", "America/New_York", "America/Los_Angeles",
+                        "Europe/London", "Asia/Tokyo", "Australia/Sydney",
+                        "Europe/Berlin", "Europe/Madrid", "Europe/Rome"
+                );
+                timezone = ui.selectFromList("Select your timezone", timezones);
+                return true;
+
+            case 7:
+                enableSwap = ui.confirmAction("Enable swap file?");
+                if (enableSwap) {
+                    List<String> swapSizes = Arrays.asList("1GB", "2GB", "4GB", "8GB");
+                    String selectedSwap = ui.selectFromList("Select swap size", swapSizes);
+                    swapSize = Integer.parseInt(selectedSwap.replace("GB", ""));
+                } else {
+                    swapSize = 0;
+                }
+                return true;
+
+            case 8:
+                isWireless = ui.confirmAction("Does the system should use Wireless connection?");
+                if (isWireless) {
+                    networkName = ui.getInputWithoutConfirmation(
+                            "Enter network name (SSID)",
+                            "^.{1,32}$",
+                            "Network name must be between 1 and 32 characters."
+                    );
+                    networkPassword = ui.getInputWithoutConfirmation(
+                            "Enter network password",
+                            "^.{8,64}$",
+                            "Network password must be between 8 and 64 characters."
+                    );
+                }
+                return true;
+
+            case 9:
+                enableFirewall = ui.confirmAction("Enable basic firewall?");
+                return true;
+
+            case 10:
+                enableSSH = ui.confirmAction("Enable SSH server?");
+                return true;
+        }
+        return false;
+    }
+
+    private void updateFieldDisplay(String[] fields, int fieldIndex) {
+        switch (fieldIndex) {
+            case 0:
+                fields[0] = "Language: " + language;
+                break;
+            case 1:
+                fields[1] = "Keyboard Layout: " + keyboardLayout;
+                break;
+            case 2:
+                fields[2] = "Machine Name: " + machineName;
+                break;
+            case 3:
+                fields[3] = "Username: " + username;
+                break;
+            case 4:
+                fields[4] = "User Password: ********";
+                break;
+            case 5:
+                fields[5] = "Root Password: ********";
+                break;
+            case 6:
+                fields[6] = "Timezone: " + timezone;
+                break;
+            case 7:
+                fields[7] = "Swap File: " + (enableSwap ? swapSize + "GB" : "Disabled");
+                break;
+            case 8:
+                fields[8] = "Wireless: " + (isWireless ? "Enabled" : "Disabled");
+                break;
+            case 9:
+                fields[9] = "Firewall: " + (enableFirewall ? "Enabled" : "Disabled");
+                break;
+            case 10:
+                fields[10] = "SSH: " + (enableSSH ? "Enabled" : "Disabled");
+                break;
+        }
+    }
+
+    private boolean validateUserInfo() {
+        List<String> errors = new ArrayList<>();
+
+        if (language == null || language.isEmpty()) {
+            errors.add("Language is required");
+        }
+
+        if (keyboardLayout == null || keyboardLayout.isEmpty()) {
+            errors.add("Keyboard layout is required");
+        }
+
+        if (machineName == null || !machineName.matches(HOSTNAME_PATTERN)) {
+            errors.add("Invalid machine name");
+        }
+
+        if (username == null || !username.matches(USERNAME_PATTERN)) {
+            errors.add("Invalid username");
+        }
+
+        if (password == null || password.length() < 4) {
+            errors.add("User password must be at least 4 characters");
+        }
+
+        if (rootPassword == null || rootPassword.length() < 4) {
+            errors.add("Root password must be at least 4 characters");
+        }
+
+        if (timezone == null || timezone.isEmpty()) {
+            errors.add("Timezone is required");
+        }
+
+        if (isWireless && (networkName == null || networkPassword == null)) {
+            errors.add("Wireless network requires both SSID and password");
+        }
+
+        if (!errors.isEmpty()) {
+            StringBuilder errorMsg = new StringBuilder("Please fix the following errors:\n\n");
+            for (String error : errors) {
+                errorMsg.append("- ").append(error).append("\n");
+            }
+            ui.showMessage(errorMsg.toString());
+            return false;
+        }
+
+        return true;
+    }
+
+    private void clearAndShowFullScreen() {
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
+        ui.showHeader();
+        ui.showProgressBar();
+        System.out.println("\n");
+    }
     private void diskPartition() {
         ui.showSection("DISK PARTITIONING");
 

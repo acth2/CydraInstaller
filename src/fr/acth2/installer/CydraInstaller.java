@@ -258,37 +258,13 @@ public class CydraInstaller {
     }
 
     private String getUserInfoInput() {
-        try {
-            while (System.in.available() > 0) {
-                System.in.read();
-            }
-
-            int input = System.in.read();
-            if (input == 27) {
-                if (System.in.available() >= 2) {
-                    int next1 = System.in.read();
-                    int next2 = System.in.read();
-                    if (next1 == 91) {
-                        if (next2 == 65) return "up";
-                        if (next2 == 66) return "down";
-                    }
-                }
-            } else if (input == 10 || input == 13) {
-                return "enter";
-            } else if (input == 'c' || input == 'C') {
-                return "confirm";
-            } else if (input == 'q' || input == 'Q') {
-                return "quit";
-            }
-        } catch (IOException e) {}
-
         System.out.print("\nCommand (u=up, d=down, e=enter, c=confirm, q=quit): ");
-        String fallback = ui.scanner.nextLine().trim().toLowerCase();
-        if (fallback.equals("u")) return "up";
-        if (fallback.equals("d")) return "down";
-        if (fallback.equals("e")) return "enter";
-        if (fallback.equals("c")) return "confirm";
-        if (fallback.equals("q")) return "quit";
+        String input = ui.scanner.nextLine().trim().toLowerCase();
+        if (input.equals("u")) return "up";
+        if (input.equals("d")) return "down";
+        if (input.equals("e")) return "enter";
+        if (input.equals("c")) return "confirm";
+        if (input.equals("q")) return "quit";
         return "enter";
     }
 

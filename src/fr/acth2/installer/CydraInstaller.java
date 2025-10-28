@@ -183,45 +183,275 @@ public class CydraInstaller {
     }
 
     private void diskPartition() {
-        ui.showSection("DISK PARTITION");
+        ui.showSection("DISK PARTITIONING");
 
         try {
             List<String> devices = getDevices();
             if (devices.isEmpty()) {
-                ui.showError("No devices found..");
+                ui.showError("No storage devices found.");
                 System.exit(1);
             }
 
-            chosenPartition = ui.selectFromList("Select The System Device", devices);
+            List<String> menuOptions = Arrays.asList(
+                    "Auto-partition entire disk",
+                    "Manual partitioning",
+                    "Use existing partitions"
+            );
 
-            if (isEfiSystem()) {
-                List<String> efiDevices = getEfiDevices(devices, chosenPartition);
-                if (efiDevices.isEmpty()) {
-                    ui.showError("No suitable EFI devices found.");
-                    System.exit(1);
-                }
-                efiPartition = ui.selectFromList("Select the EFI Device", efiDevices);
-            }
+            String choice = ui.selectFromList("Select partitioning method", menuOptions);
 
-            chosenPartition = "/dev/" + chosenPartition;
-            if (efiPartition != null) {
-                efiPartition = "/dev/" + efiPartition;
-            }
-
-            StringBuilder confirmation = new StringBuilder();
-            confirmation.append("Selected devices:\n");
-            confirmation.append("System: ").append(chosenPartition).append("\n");
-            if (efiPartition != null) {
-                confirmation.append("EFI: ").append(efiPartition).append("\n");
-            }
-            confirmation.append("\nThese devices will be formatted. Continue?");
-
-            if (!ui.confirmAction(confirmation.toString())) {
-                diskPartition();
+            switch (choice) {
+                case "Auto-partition entire disk":
+                    autoPartitioning(devices);
+                    break;
+                case "Manual partitioning":
+                    manualPartitioning(devices);
+                    break;
+                case "Use existing partitions":
+                    useExistingPartitions(devices);
+                    break;
             }
 
         } catch (Exception e) {
-            ui.showError("Error during disk partition: " + e.getMessage());
+            ui.showError("Error during disk partitioning: " + e.getMessage());
+        }
+    }
+
+    private void autoPartitioning(List<String> devices) throws Exception {
+        String selectedDisk = ui.selectFromList("Select disk for automatic partitioning", devices);
+        selectedDisk = "/dev/" + selectedDisk;
+
+        List<String> schemeOptions = Arrays.asList(
+                "Standard (separate root and home)",
+                "Simple (single root partition)",
+                "LVM partitioning"
+        );
+
+        String scheme = ui.selectFromList("Select partitioning scheme", schemeOptions);
+
+        if (isEfiSystem()) {
+            configureAutoEfi(selectedDisk, scheme);
+        } else {
+            configureAutoBios(selectedDisk, scheme);
+        }
+    }
+
+    private void configureAutoEfi(String disk, String scheme) throws Exception {
+        ui.showMessage("Configuring EFI system with " + scheme + " scheme...");
+
+        Process fdiskProcess = Runtime.getRuntime().exec(new String[]{"fdisk", disk});
+        try (PrintWriter writer = new PrintWriter(fdiskProcess.getOutputStream())) {
+            writer.println("g"); // GPT partition table
+            writer.println("n"); // EFI partition
+            writer.println("1");
+            writer.println();
+            writer.println("+512M");
+            writer.println("t");
+            writer.println("1");
+
+            if (scheme.equals("Standard (separate root and home)")) {
+                writer.println("n"); // Root partition
+                writer.println("2");
+                writer.println();
+                writer.println("+20G");
+                writer.println("n"); // Home partition
+                writer.println("3");
+                writer.println();
+                writer.println();
+            } else if (scheme.equals("LVM partitioning")) {
+                writer.println("n"); // LVM partition
+                writer.println("2");
+                writer.println();
+                writer.println();
+                writer.println("t");
+                writer.println("2");
+                writer.println("30");
+            } else {
+                writer.println("n"); // Root partition
+                writer.println("2");
+                writer.println();
+                writer.println();
+            }
+            writer.println("w");
+        }
+        fdiskProcess.waitFor();
+
+        Process efiFormat = Runtime.getRuntime().exec(new String[]{"mkfs.fat", "-F", "32", disk + "1"});
+        efiFormat.waitFor();
+
+        if (scheme.equals("Standard (separate root and home)")) {
+            Process rootFormat = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", disk + "2"});
+            rootFormat.waitFor();
+            Process homeFormat = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", disk + "3"});
+            homeFormat.waitFor();
+
+            chosenPartition = disk + "2";
+            efiPartition = disk + "1";
+        } else {
+            Process rootFormat = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", disk + "2"});
+            rootFormat.waitFor();
+            chosenPartition = disk + "2";
+            efiPartition = disk + "1";
+        }
+
+        showPartitionSummary();
+    }
+
+    private void configureAutoBios(String disk, String scheme) throws Exception {
+        ui.showMessage("Configuring BIOS system with " + scheme + " scheme...");
+
+        Process fdiskProcess = Runtime.getRuntime().exec(new String[]{"fdisk", disk});
+        try (PrintWriter writer = new PrintWriter(fdiskProcess.getOutputStream())) {
+            writer.println("o"); // MBR partition table
+
+            if (scheme.equals("Standard (separate root and home)")) {
+                writer.println("n"); // Root partition
+                writer.println("p");
+                writer.println("1");
+                writer.println();
+                writer.println("+20G");
+                writer.println("n"); // Home partition
+                writer.println("p");
+                writer.println("2");
+                writer.println();
+                writer.println();
+            } else {
+                writer.println("n"); // Root partition
+                writer.println("p");
+                writer.println("1");
+                writer.println();
+                writer.println();
+            }
+            writer.println("a"); // Bootable
+            writer.println("1");
+            writer.println("w");
+        }
+        fdiskProcess.waitFor();
+
+        if (scheme.equals("Standard (separate root and home)")) {
+            Process rootFormat = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", disk + "1"});
+            rootFormat.waitFor();
+            Process homeFormat = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", disk + "2"});
+            homeFormat.waitFor();
+            chosenPartition = disk + "1";
+        } else {
+            Process rootFormat = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", disk + "1"});
+            rootFormat.waitFor();
+            chosenPartition = disk + "1";
+        }
+
+        showPartitionSummary();
+    }
+
+    private void manualPartitioning(List<String> devices) throws Exception {
+        String selectedDisk = ui.selectFromList("Select disk for manual partitioning", devices);
+        selectedDisk = "/dev/" + selectedDisk;
+
+        ui.showMessage("Starting manual partitioning for " + selectedDisk + "\n" +
+                "You will be placed in fdisk. Please create your partitions manually.\n" +
+                "After finishing, return to continue installation.");
+
+        Process fdiskProcess = Runtime.getRuntime().exec(new String[]{"fdisk", selectedDisk});
+        fdiskProcess.waitFor();
+
+        List<String> partitions = getPartitions(selectedDisk);
+        if (partitions.isEmpty()) {
+            ui.showError("No partitions created. Please try again.");
+            manualPartitioning(devices);
+            return;
+        }
+
+        chosenPartition = ui.selectFromList("Select root partition", partitions);
+
+        if (isEfiSystem()) {
+            List<String> efiCandidates = getEfiPartitions(partitions);
+            if (!efiCandidates.isEmpty()) {
+                efiPartition = ui.selectFromList("Select EFI system partition", efiCandidates);
+            }
+        }
+
+        formatSelectedPartitions();
+        showPartitionSummary();
+    }
+
+    private void useExistingPartitions(List<String> devices) throws Exception {
+        List<String> allPartitions = new ArrayList<>();
+        for (String device : devices) {
+            allPartitions.addAll(getPartitions("/dev/" + device));
+        }
+
+        if (allPartitions.isEmpty()) {
+            ui.showError("No existing partitions found.");
+            diskPartition();
+            return;
+        }
+
+        chosenPartition = ui.selectFromList("Select root partition", allPartitions);
+
+        if (isEfiSystem()) {
+            List<String> efiCandidates = getEfiPartitions(allPartitions);
+            if (!efiCandidates.isEmpty()) {
+                efiPartition = ui.selectFromList("Select EFI system partition", efiCandidates);
+            }
+        }
+
+        if (ui.confirmAction("Format selected partitions?")) {
+            formatSelectedPartitions();
+        }
+
+        showPartitionSummary();
+    }
+
+    private List<String> getPartitions(String disk) throws Exception {
+        List<String> partitions = new ArrayList<>();
+        Process process = Runtime.getRuntime().exec(new String[]{"lsblk", "-ln", "-o", "NAME", disk});
+        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (line.matches(".*[0-9]$")) {
+                partitions.add("/dev/" + line.trim());
+            }
+        }
+        return partitions;
+    }
+
+    private List<String> getEfiPartitions(List<String> partitions) throws Exception {
+        List<String> efiPartitions = new ArrayList<>();
+        for (String partition : partitions) {
+            Process process = Runtime.getRuntime().exec(new String[]{"blkid", "-o", "value", "-s", "TYPE", partition});
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String fstype = reader.readLine();
+            if ("vfat".equals(fstype)) {
+                efiPartitions.add(partition);
+            }
+        }
+        return efiPartitions;
+    }
+
+    private void formatSelectedPartitions() throws Exception {
+        if (ui.confirmAction("Format root partition " + chosenPartition + " as ext4?")) {
+            Process format = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", chosenPartition});
+            format.waitFor();
+        }
+
+        if (efiPartition != null && ui.confirmAction("Format EFI partition " + efiPartition + " as FAT32?")) {
+            Process format = Runtime.getRuntime().exec(new String[]{"mkfs.fat", "-F", "32", efiPartition});
+            format.waitFor();
+        }
+    }
+
+    private void showPartitionSummary() {
+        StringBuilder summary = new StringBuilder();
+        summary.append("Partitioning Summary:\n\n");
+        summary.append("Root partition: ").append(chosenPartition).append("\n");
+        if (efiPartition != null) {
+            summary.append("EFI partition: ").append(efiPartition).append("\n");
+        }
+        summary.append("\nContinue with installation?");
+
+        if (!ui.confirmAction(summary.toString())) {
+            diskPartition();
         }
     }
 

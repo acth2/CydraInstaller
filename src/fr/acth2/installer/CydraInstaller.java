@@ -259,45 +259,32 @@ public class CydraInstaller {
 
     private String getUserInfoInput() {
         try {
-            while (System.in.available() > 0) {
-                System.in.read();
-            }
+            int key = System.in.read();
 
-            int firstChar = System.in.read();
-            if (firstChar == 27) {
-                int secondChar = System.in.read();
-                int thirdChar = System.in.read();
-
-                if (secondChar == 91) {
-                    switch (thirdChar) {
-                        case 65: return "up";
-                        case 66: return "down";
-                        case 67: return "right";
-                        case 68: return "left";
-                    }
+            System.out.println();
+            if (key == 27) {
+                if (System.in.available() >= 2) {
+                    System.in.read();
+                    int arrow = System.in.read();
+                    if (arrow == 65) return "up";
+                    if (arrow == 66) return "down";
                 }
-            }
-
-            else if (firstChar == 10 || firstChar == 13) {
+            } else if (key == 10 || key == 13) {
+                return "enter";
+            } else if (key == 'c' || key == 'C') {
+                return "confirm";
+            } else if (key == 'q' || key == 'Q') {
+                return "quit";
+            } else if (key == ' ') {
                 return "enter";
             }
 
-            else {
-                char ch = (char) firstChar;
-                if (ch == 'c' || ch == 'C') return "confirm";
-                if (ch == 'q' || ch == 'Q') return "quit";
-                if (ch == ' ') return "enter";
-            }
-        } catch (IOException e) {}
+            return "enter";
 
-        System.out.print("\nCommand (arrows=nav, enter=select, c=confirm, q=quit): ");
-        String input = ui.scanner.nextLine().trim().toLowerCase();
-        if (input.equals("u")) return "up";
-        if (input.equals("d")) return "down";
-        if (input.equals("e") || input.equals("")) return "enter";
-        if (input.equals("c")) return "confirm";
-        if (input.equals("q")) return "quit";
-        return "enter";
+        } catch (IOException e) {
+            System.out.println();
+            return "enter";
+        }
     }
 
     private boolean editField(int fieldIndex) {

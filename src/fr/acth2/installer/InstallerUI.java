@@ -1,7 +1,7 @@
 package fr.acth2.installer;
 
-import java.io.BufferedReader;
 import java.io.Console;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Scanner;
@@ -16,10 +16,11 @@ public class InstallerUI {
     private int totalSections = 8;
     private int currentSection = 0;
     private int terminalWidth;
+    private int terminalHeight;
 
     public InstallerUI() {
         this.scanner = new Scanner(System.in);
-        this.terminalWidth = getTerminalWidth();
+        updateTerminalSize();
     }
 
     public void showWelcome() {
@@ -27,14 +28,18 @@ public class InstallerUI {
         showHeader();
         showProgressBar();
         System.out.println("\n\n");
-        System.out.println("          CydraLite");
-        System.out.println("\n");
-        System.out.println("text");
-        System.out.println("text");
-        System.out.println("text");
-        System.out.println("text");
-        System.out.println("\n\n");
-        showNavigation(false, true);
+
+        String[] content = {
+                "CydraLite",
+                "",
+                "text",
+                "text",
+                "text",
+                "text",
+                "",
+                "[suivant]"
+        };
+        showContentBox(content);
     }
 
     public void showSection(String sectionName) {
@@ -42,50 +47,63 @@ public class InstallerUI {
         showHeader();
         showProgressBar();
         System.out.println("\n\n");
-        System.out.println("          " + sectionName);
-        System.out.println("\n");
+
+        String[] content = {
+                sectionName
+        };
+        showContentBox(content);
     }
 
     public void showMessage(String message) {
-        System.out.println(message);
+        String[] content = {message};
+        showContentBox(content);
     }
 
     public void showError(String error) {
-        System.out.println("ERROR: " + error);
+        String[] content = {"ERROR: " + error};
+        showContentBox(content);
     }
 
     public boolean confirmAction(String message) {
-        System.out.println(message);
-        System.out.print("(y/n): ");
+        String[] content = {
+                message,
+                "(y/n): "
+        };
+        showContentBox(content);
         String response = scanner.nextLine().trim().toLowerCase();
         return response.equals("y") || response.equals("yes");
     }
 
     public String getInput(String prompt) {
-        System.out.print(prompt + ": ");
+        String[] content = {prompt + ": "};
+        showContentBox(content);
         return scanner.nextLine().trim();
     }
 
     public String getPassword(String prompt) {
         Console console = System.console();
+        String[] content = {prompt + ": "};
+        showContentBox(content);
+
         if (console != null) {
-            char[] passwordChars = console.readPassword(prompt + ": ");
+            char[] passwordChars = console.readPassword();
             return new String(passwordChars);
         } else {
-            System.out.print(prompt + ": ");
             return scanner.nextLine().trim();
         }
     }
 
     public String selectFromList(String title, List<String> options) {
-        System.out.println(title + ":");
+        String[] content = new String[options.size() + 1];
+        content[0] = title + ":";
         for (int i = 0; i < options.size(); i++) {
-            System.out.println((i + 1) + ". " + options.get(i));
+            content[i + 1] = (i + 1) + ". " + options.get(i);
         }
+        showContentBox(content);
 
         while (true) {
+            System.out.print("Select option (1-" + options.size() + "): ");
             try {
-                System.out.print("Select option (1-" + options.size() + "): ");
                 int choice = Integer.parseInt(scanner.nextLine());
                 if (choice >= 1 && choice <= options.size()) {
                     return options.get(choice - 1);
@@ -97,48 +115,72 @@ public class InstallerUI {
     }
 
     public void waitForEnter() {
-        System.out.println("Press Enter to continue...");
+        String[] content = {"Press Enter to continue..."};
+        showContentBox(content);
         scanner.nextLine();
     }
 
     public void updateProgress(int section) {
         this.currentSection = section;
-        this.terminalWidth = getTerminalWidth();
+        updateTerminalSize();
     }
 
     private void showHeader() {
-        String headerLine = getSpaces(terminalWidth);
+        updateTerminalSize();
+        String headerLine = " ".repeat(terminalWidth);
         System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
         System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
         System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
     }
 
     private void showProgressBar() {
-        if (terminalWidth < 40) {
-            showCompactProgressBar();
+        System.out.println();
+        int percentage = (currentSection * 100 / totalSections);
+
+        if (terminalWidth >= 50) {
+            String progressText = "Progress: [" + getProgressBar(20) + "] " + percentage + "%";
+            System.out.println(centerText(progressText, terminalWidth));
+        } else if (terminalWidth >= 30) {
+            String progressText = "Progress: " + getProgressBar(10) + " " + percentage + "%";
+            System.out.println(centerText(progressText, terminalWidth));
         } else {
-            showFullProgressBar();
+            System.out.println(centerText("Progress: " + percentage + "%", terminalWidth));
         }
     }
 
-    private void showFullProgressBar() {
-        System.out.print("\n" + BLUE + "Progress: [" + RESET);
-        int filledSegments = (currentSection * 10) / totalSections;
-        int barWidth = Math.min(20, terminalWidth - 15);
-
-        for (int i = 0; i < 10; i++) {
-            if (i < filledSegments) {
-                System.out.print(BLUE + "█" + RESET);
+    private String getProgressBar(int length) {
+        int filled = (currentSection * length) / totalSections;
+        StringBuilder bar = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            if (i < filled) {
+                bar.append("█");
             } else {
-                System.out.print("░");
+                bar.append("░");
             }
         }
-        System.out.println(BLUE + "] " + (currentSection * 100 / totalSections) + "%" + RESET);
+        return bar.toString();
     }
 
-    private void showCompactProgressBar() {
-        int percentage = (currentSection * 100 / totalSections);
-        System.out.println("\n" + BLUE + "Progress: " + percentage + "%" + RESET);
+    private void showContentBox(String[] contentLines) {
+        int maxLineLength = 0;
+        for (String line : contentLines) {
+            if (line.length() > maxLineLength) {
+                maxLineLength = line.length();
+            }
+        }
+
+        int boxWidth = Math.min(terminalWidth - 4, maxLineLength + 6);
+        String border = "┌" + "─".repeat(boxWidth - 2) + "┐";
+
+        System.out.println(centerText(border, terminalWidth));
+
+        for (String line : contentLines) {
+            String paddedLine = "│" + centerText(line, boxWidth - 2) + "│";
+            System.out.println(centerText(paddedLine, terminalWidth));
+        }
+
+        String bottom = "└" + "─".repeat(boxWidth - 2) + "┘";
+        System.out.println(centerText(bottom, terminalWidth));
     }
 
     private String centerText(String text, int width) {
@@ -146,36 +188,44 @@ public class InstallerUI {
             return text.substring(0, width);
         }
         int padding = (width - text.length()) / 2;
-        return getSpaces(padding) + text + getSpaces(width - text.length() - padding);
+        return " ".repeat(padding) + text + " ".repeat(width - text.length() - padding);
     }
 
-    private String getSpaces(int count) {
-        return " ".repeat(Math.max(0, count));
-    }
-
-    private int getTerminalWidth() {
+    private void updateTerminalSize() {
         try {
-            String os = System.getProperty("os.name").toLowerCase();
-            if (os.contains("linux") || os.contains("mac") || os.contains("unix")) {
-                Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", "tput cols 2>/dev/null || echo 80"});
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                String line = reader.readLine();
-                return Integer.parseInt(line.trim());
+            Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", "stty size </dev/tty"});
+            process.waitFor();
+            InputStreamReader reader = new InputStreamReader(process.getInputStream());
+            char[] buffer = new char[16];
+            int bytesRead = reader.read(buffer);
+
+            if (bytesRead > 0) {
+                String result = new String(buffer, 0, bytesRead).trim();
+                String[] dimensions = result.split(" ");
+                if (dimensions.length >= 2) {
+                    terminalHeight = Integer.parseInt(dimensions[0]);
+                    terminalWidth = Integer.parseInt(dimensions[1]);
+                    return;
+                }
             }
         } catch (Exception e) {
         }
-        return 80;
-    }
 
-    private void showNavigation(boolean showBack, boolean showNext) {
-        System.out.println("\n");
-        if (showBack) {
-            System.out.print("[retour] ");
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{"tput", "cols"});
+            process.waitFor();
+            InputStreamReader reader = new InputStreamReader(process.getInputStream());
+            char[] buffer = new char[8];
+            int bytesRead = reader.read(buffer);
+            if (bytesRead > 0) {
+                String result = new String(buffer, 0, bytesRead).trim();
+                terminalWidth = Integer.parseInt(result);
+            }
+        } catch (Exception e) {
+            terminalWidth = 80;
         }
-        if (showNext) {
-            System.out.print("[suivant]");
-        }
-        System.out.println();
+
+        terminalHeight = 24;
     }
 
     private void clearScreen() {

@@ -114,7 +114,7 @@ public class CydraInstaller {
         ui.showMessage("Installer code on: https://github.com/acth2/CydraInstaller");
         ui.showMessage("Thanks to the LFS & BLFS team for everything !");
 
-        if (!ui.confirmAction("This installer will set up CydraLite on your system.\nContinue?")) {
+        if (!ui.confirmAction("This installer will set up CydraLite on your system. Continue?")) {
             System.exit(0);
         }
     }

@@ -113,10 +113,6 @@ public class CydraInstaller {
         ui.showMessage("Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE");
         ui.showMessage("Installer code on: https://github.com/acth2/CydraInstaller");
         ui.showMessage("Thanks to the LFS & BLFS team for everything !");
-
-        if (!ui.confirmAction("This installer will set up CydraLite on your system. Continue?")) {
-            System.exit(0);
-        }
     }
 
     private void getUserInfos() {

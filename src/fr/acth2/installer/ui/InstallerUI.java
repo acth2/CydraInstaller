@@ -255,7 +255,7 @@ public class InstallerUI {
         updateTerminalSize();
         String headerLine = " ".repeat(terminalWidth);
         if (!CydraInstaller.error) {
-            if (currentSectionName.isEmpty()) {
+            if (currentSectionName == null) {
                 System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
                 System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
                 System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);

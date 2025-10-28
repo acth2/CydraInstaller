@@ -1,6 +1,5 @@
 package fr.acth2.installer;
 
-import fr.acth2.installer.handlers.CLIMultipleQuestionsHandler;
 import fr.acth2.installer.ui.InstallerUI;
 
 import java.io.*;

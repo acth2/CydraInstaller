@@ -98,12 +98,9 @@ public class CydraInstaller {
         ui.showSection("GET USER INFOS");
 
         language = ui.getInput("Enter language name (fr / us)");
-        if (!language.isEmpty()) {
-            ui.showMessage("Language set to '" + language + "'");
-        }
-
         machineName = ui.getInput("Enter machine name");
         username = ui.getInput("Enter your username");
+
         password = ui.getPassword("Enter machine password");
 
         isWireless = ui.confirmAction("Does the system should use Wireless connection?");

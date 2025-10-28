@@ -11,6 +11,7 @@ public class InstallerUI {
     private static final String WHITE_BOLD = "\u001B[1;37m";
     private static final String RESET = "\u001B[0m";
     private static final String BLUE = "\u001B[34m";
+    private static final String GREEN = "\u001B[32m";
 
     private Scanner scanner;
     private int totalSections = 8;
@@ -31,8 +32,7 @@ public class InstallerUI {
                 "",
                 "Welcome to CydraLite Installer",
                 "This will guide you through the installation",
-                "",
-                "[suivant]"
+                ""
         };
         showContentBox(content);
         waitForEnter();
@@ -43,7 +43,6 @@ public class InstallerUI {
 
         String[] content = {sectionName};
         showContentBox(content);
-        try { Thread.sleep(100); } catch (InterruptedException e) {}
     }
 
     public void showMessage(String message) {
@@ -51,8 +50,13 @@ public class InstallerUI {
 
         String[] lines = splitMessage(message, Math.min(terminalWidth - 10, 70));
         showContentBox(lines);
-        try { Thread.sleep(100); } catch (InterruptedException e) {}
         waitForEnter();
+    }
+
+    public void showInlineMessage(String message) {
+        System.out.println();
+        System.out.println(GREEN + "✓ " + message + RESET);
+        System.out.println();
     }
 
     public void showError(String error) {
@@ -60,7 +64,6 @@ public class InstallerUI {
 
         String[] lines = splitMessage("ERROR: " + error, Math.min(terminalWidth - 10, 70));
         showContentBox(lines);
-        try { Thread.sleep(100); } catch (InterruptedException e) {}
         waitForEnter();
     }
 
@@ -77,6 +80,23 @@ public class InstallerUI {
     }
 
     public String getInput(String prompt) {
+        clearAndShowFullScreen();
+
+        String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
+        showContentBox(lines);
+
+        System.out.println();
+        System.out.print("> ");
+        String input = scanner.nextLine().trim();
+
+        if (!input.isEmpty()) {
+            showInlineMessage("Set to: " + input);
+        }
+
+        return input;
+    }
+
+    public String getInputWithoutConfirmation(String prompt) {
         clearAndShowFullScreen();
 
         String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
@@ -121,11 +141,12 @@ public class InstallerUI {
             try {
                 int choice = Integer.parseInt(scanner.nextLine());
                 if (choice >= 1 && choice <= options.size()) {
-                    return options.get(choice - 1);
+                    String selected = options.get(choice - 1);
+                    showInlineMessage("Selected: " + selected);
+                    return selected;
                 }
-            } catch (NumberFormatException ignored) { }
+            } catch (NumberFormatException e) {}
             System.out.println("Invalid selection. Please try again.");
-            System.out.println();
         }
     }
 
@@ -264,7 +285,7 @@ public class InstallerUI {
                     return;
                 }
             }
-        } catch (Exception ignored) { }
+        } catch (Exception e) {}
 
         try {
             Process process = Runtime.getRuntime().exec(new String[]{"tput", "cols"});

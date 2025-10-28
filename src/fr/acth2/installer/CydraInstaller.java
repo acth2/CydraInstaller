@@ -109,7 +109,7 @@ public class CydraInstaller {
     }
 
     private void showInformations() {
-        ui.showSection("INFORMATIONS");
+        ui.showSection("INTRODUCTION");
 
         ui.showMessage("Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE");
         ui.showMessage("Installer code on: https://github.com/acth2/CydraInstaller");

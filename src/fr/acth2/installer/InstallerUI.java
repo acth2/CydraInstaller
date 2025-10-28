@@ -196,9 +196,9 @@ public class InstallerUI {
         StringBuilder bar = new StringBuilder();
         for (int i = 0; i < length; i++) {
             if (i < filled) {
-                bar.append("█");
+                bar.append("#");
             } else {
-                bar.append("░");
+                bar.append(" ");
             }
         }
         return bar.toString();
@@ -217,17 +217,17 @@ public class InstallerUI {
         }
 
         int boxWidth = Math.min(terminalWidth - 4, Math.max(maxLineLength + 6, 20));
-        String border = "┌" + "─".repeat(boxWidth - 2) + "┐";
+        String border = "#" + "#".repeat(boxWidth - 2) + "#";
 
         System.out.println(centerText(border, terminalWidth));
 
         for (String line : contentLines) {
             if (line == null) continue;
-            String paddedLine = "│" + centerText(line, boxWidth - 2) + "│";
+            String paddedLine = "|" + centerText(line, boxWidth - 2) + "|";
             System.out.println(centerText(paddedLine, terminalWidth));
         }
 
-        String bottom = "└" + "─".repeat(boxWidth - 2) + "┘";
+        String bottom = "#" + "#".repeat(boxWidth - 2) + "#";
         System.out.println(centerText(bottom, terminalWidth));
     }
 

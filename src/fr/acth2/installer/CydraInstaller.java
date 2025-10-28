@@ -565,14 +565,50 @@ public class CydraInstaller {
 
     private List<String> getDevices() throws IOException {
         List<String> devices = new ArrayList<>();
-        Process process = Runtime.getRuntime().exec(new String[]{"lsblk", "-ndo", "NAME", "-e", "7,11"});
+        Process process = Runtime.getRuntime().exec(new String[]{"lsblk", "-ndo", "NAME,TYPE,ROTA", "-e", "7,11,1"});
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 
         String line;
         while ((line = reader.readLine()) != null) {
             line = line.trim();
-            if (!line.isEmpty() && !line.matches("^(loop[0-9]+|sr[0-9]+)$")) {
-                devices.add(line);
+            if (!line.isEmpty()) {
+                String[] parts = line.split("\\s+");
+                if (parts.length >= 2) {
+                    String deviceName = parts[0];
+                    String deviceType = parts[1];
+                    if ("disk".equals(deviceType) &&
+                            !deviceName.matches("^(ram[0-9]+|loop[0-9]+|sr[0-9]+|fd[0-9]+|dm-[0-9]+|nvme[0-9]+n[0-9]+)$") &&
+                            !deviceName.startsWith("zd")) {
+                        devices.add(deviceName);
+                    }
+                }
+            }
+        }
+
+        if (devices.isEmpty()) {
+            File sysBlock = new File("/sys/block");
+            File[] blockDevices = sysBlock.listFiles();
+            if (blockDevices != null) {
+                for (File device : blockDevices) {
+                    String deviceName = device.getName();
+                    if (!deviceName.matches("^(ram|loop|fd|sr|dm-|nvme[0-9]+n[0-9]+).*") &&
+                            !deviceName.startsWith("zd") &&
+                            !deviceName.contains("rpmb")) {
+                        try {
+                            File removable = new File(device, "removable");
+                            if (removable.exists()) {
+                                String removableContent = Files.readString(removable.toPath()).trim();
+                                if ("0".equals(removableContent)) {
+                                    devices.add(deviceName);
+                                }
+                            } else {
+                                devices.add(deviceName);
+                            }
+                        } catch (Exception e) {
+                            devices.add(deviceName);
+                        }
+                    }
+                }
             }
         }
 

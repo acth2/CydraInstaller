@@ -228,11 +228,11 @@ public class CydraInstaller {
     private boolean autoPartitioning(List<String> devices) throws Exception {
         while (true) {
             List<String> diskOptions = new ArrayList<>(devices);
-            diskOptions.add("← Back to partitioning methods");
+            diskOptions.add("<- Back to partitioning methods");
 
             String selectedDisk = ui.selectFromList("Select disk for automatic partitioning", diskOptions);
 
-            if (selectedDisk.equals("← Back to partitioning methods")) {
+            if (selectedDisk.equals("<- Back to partitioning methods")) {
                 return false;
             }
 
@@ -243,11 +243,11 @@ public class CydraInstaller {
                     "Simple (single root partition)",
                     "LVM partitioning"
             ));
-            schemeOptions.add("← Back to disk selection");
+            schemeOptions.add("<- Back to disk selection");
 
             String scheme = ui.selectFromList("Select partitioning scheme", schemeOptions);
 
-            if (scheme.equals("← Back to disk selection")) {
+            if (scheme.equals("<- Back to disk selection")) {
                 continue;
             }
 
@@ -270,15 +270,15 @@ public class CydraInstaller {
             confirmation.append("Disk: ").append(disk).append("\n");
             confirmation.append("Scheme: ").append(scheme).append("\n\n");
             confirmation.append("This will create:\n");
-            confirmation.append("• 512MB EFI System Partition\n");
+            confirmation.append("* 512MB EFI System Partition\n");
 
             if (scheme.equals("Standard (separate root and home)")) {
-                confirmation.append("• 20GB Root partition (ext4)\n");
-                confirmation.append("• Remaining space for Home (ext4)\n");
+                confirmation.append("* 20GB Root partition (ext4)\n");
+                confirmation.append("* Remaining space for Home (ext4)\n");
             } else if (scheme.equals("LVM partitioning")) {
-                confirmation.append("• LVM physical volume for system\n");
+                confirmation.append("* LVM physical volume for system\n");
             } else {
-                confirmation.append("• Single root partition with remaining space (ext4)\n");
+                confirmation.append("* Single root partition with remaining space (ext4)\n");
             }
 
             confirmation.append("\nALL DATA ON THE DISK WILL BE LOST!\n");
@@ -376,12 +376,12 @@ public class CydraInstaller {
             confirmation.append("This will create:\n");
 
             if (scheme.equals("Standard (separate root and home)")) {
-                confirmation.append("• 20GB Root partition (ext4)\n");
-                confirmation.append("• Remaining space for Home (ext4)\n");
+                confirmation.append("* 20GB Root partition (ext4)\n");
+                confirmation.append("* Remaining space for Home (ext4)\n");
             } else if (scheme.equals("LVM partitioning")) {
-                confirmation.append("• LVM physical volume for system\n");
+                confirmation.append("* LVM physical volume for system\n");
             } else {
-                confirmation.append("• Single root partition with all space (ext4)\n");
+                confirmation.append("* Single root partition with all space (ext4)\n");
             }
 
             confirmation.append("\nALL DATA ON THE DISK WILL BE LOST!\n");
@@ -458,11 +458,11 @@ public class CydraInstaller {
     private boolean manualPartitioning(List<String> devices) throws Exception {
         while (true) {
             List<String> diskOptions = new ArrayList<>(devices);
-            diskOptions.add("← Back to partitioning methods");
+            diskOptions.add("<- Back to partitioning methods");
 
             String selectedDisk = ui.selectFromList("Select disk for manual partitioning", diskOptions);
 
-            if (selectedDisk.equals("← Back to partitioning methods")) {
+            if (selectedDisk.equals("<- Back to partitioning methods")) {
                 return false;
             }
 
@@ -473,10 +473,10 @@ public class CydraInstaller {
                     "After finishing, return to continue installation.\n\n" +
                     "Note: Make sure to create at least one root partition.");
 
-            List<String> fdiskOptions = Arrays.asList("Launch fdisk", "← Back to disk selection");
+            List<String> fdiskOptions = Arrays.asList("Launch fdisk", "<- Back to disk selection");
             String launchChoice = ui.selectFromList("Ready to start fdisk?", fdiskOptions);
 
-            if (launchChoice.equals("← Back to disk selection")) {
+            if (launchChoice.equals("<- Back to disk selection")) {
                 continue;
             }
 
@@ -486,9 +486,9 @@ public class CydraInstaller {
             List<String> partitions = getPartitions(selectedDisk);
             if (partitions.isEmpty()) {
                 ui.showError("No partitions created.");
-                List<String> retryOptions = Arrays.asList("Retry manual partitioning", "← Back to disk selection");
+                List<String> retryOptions = Arrays.asList("Retry manual partitioning", "<- Back to disk selection");
                 String retryChoice = ui.selectFromList("No partitions were created. What would you like to do?", retryOptions);
-                if (retryChoice.equals("← Back to disk selection")) {
+                if (retryChoice.equals("<- Back to disk selection")) {
                     continue;
                 }
                 return false;
@@ -507,9 +507,9 @@ public class CydraInstaller {
                 if (showPartitionSummary()) {
                     return true;
                 } else {
-                    List<String> retryOptions = Arrays.asList("Reselect partitions", "← Back to disk selection");
+                    List<String> retryOptions = Arrays.asList("Reselect partitions", "<- Back to disk selection");
                     String retryChoice = ui.selectFromList("Would you like to reselect partitions or choose a different disk?", retryOptions);
-                    if (retryChoice.equals("← Back to disk selection")) {
+                    if (retryChoice.equals("<- Back to disk selection")) {
                         break;
                     }
                 }
@@ -526,19 +526,19 @@ public class CydraInstaller {
 
             if (allPartitions.isEmpty()) {
                 ui.showError("No existing partitions found.");
-                List<String> options = Arrays.asList("Try again", "← Back to partitioning methods");
+                List<String> options = Arrays.asList("Try again", "<- Back to partitioning methods");
                 String choice = ui.selectFromList("No partitions found. What would you like to do?", options);
-                if (choice.equals("← Back to partitioning methods")) {
+                if (choice.equals("<- Back to partitioning methods")) {
                     return false;
                 }
                 continue;
             }
 
-            allPartitions.add("← Back to partitioning methods");
+            allPartitions.add("<- Back to partitioning methods");
 
             chosenPartition = ui.selectFromList("Select root partition", allPartitions);
 
-            if (chosenPartition.equals("← Back to partitioning methods")) {
+            if (chosenPartition.equals("<- Back to partitioning methods")) {
                 return false;
             }
 
@@ -693,7 +693,7 @@ public class CydraInstaller {
         ui.showSection("GRUB CONFIGURING");
         try {
             if (!isEfiSystem()) {
-                ui.showMessage("GRUB will be installed on " + chosenPartition + "/boot for BIOS boot.");
+                ui.showMessage("GRUB will be installed on " + chosenPartition + "/boot for BIOS boot.", true);
                 installBiosGrub();
             } else {
                 configureEfiSystem();
@@ -731,7 +731,7 @@ public class CydraInstaller {
             throw new IOException("Failed to mount EFI partition");
         }
 
-        ui.showMessage("The partition " + efiPartition + "1 has been formatted as FAT32.");
+        ui.showMessage("The partition " + efiPartition + "1 has been formatted as FAT32.", true);
 
         Process grubProcess = Runtime.getRuntime().exec(new String[]{
                 "grub-install", efiPartition + "1",
@@ -917,7 +917,7 @@ public class CydraInstaller {
         );
 
         Files.write(wpaSupplicantPath, wpaConfig);
-        ui.showMessage("Wireless network configuration completed");
+        ui.showMessage("Wireless network configuration completed", true);
     }
 
     private void createSwapFile() throws IOException, InterruptedException {
@@ -940,7 +940,7 @@ public class CydraInstaller {
             throw new IOException("Failed to initialize swap space");
         }
 
-        ui.showMessage(swapSize + "GB swapfile is created.. (" + chosenPartition + ")");
+        ui.showMessage(swapSize + "GB swapfile is created.. (" + chosenPartition + ")", true);
     }
 
     private void createUserAccount() throws IOException, InterruptedException {
@@ -964,7 +964,7 @@ public class CydraInstaller {
             throw new IOException("Failed to set passwords");
         }
 
-        ui.showMessage("User account created successfully");
+        ui.showMessage("User account created successfully", true);
     }
 
     private void systemConfiguration() throws IOException, InterruptedException {
@@ -986,7 +986,7 @@ public class CydraInstaller {
         });
         hostidProcess.waitFor();
 
-        ui.showMessage("System configuration completed");
+        ui.showMessage("System configuration completed", true);
     }
 
     private void configureFirewall() throws IOException, InterruptedException {
@@ -1032,7 +1032,7 @@ public class CydraInstaller {
             Process umountTemp = Runtime.getRuntime().exec(new String[]{"umount", "/mnt/temp"});
             umountTemp.waitFor();
 
-            ui.showMessage("Cleanup completed");
+            ui.showMessage("Cleanup completed", true);
         } catch (Exception e) {
             ui.showError("Error during cleanup: " + e.getMessage());
         }
@@ -1044,10 +1044,10 @@ public class CydraInstaller {
                 Process rebootProcess = Runtime.getRuntime().exec(new String[]{"reboot"});
                 rebootProcess.waitFor();
             } catch (Exception e) {
-                ui.showMessage("Please reboot manually to start using CydraLite.");
+                ui.showError("Reboot fail. Proceed manually");
             }
         } else {
-            ui.showMessage("Please remember to reboot to start using CydraLite.");
+            ui.showMessage("Thanks for using the CydraLite installer", true);
         }
     }
 }

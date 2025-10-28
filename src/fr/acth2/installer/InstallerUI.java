@@ -55,6 +55,19 @@ public class InstallerUI {
         waitForEnter();
     }
 
+    public void showMessage(String message, boolean informative) {
+        if (!informative) {
+            clearAndShowFullScreen();
+        }
+
+        String[] lines = splitMessage(message, Math.min(terminalWidth - 10, 70));
+        showContentBox(lines);
+
+        if (!informative) {
+            waitForEnter();
+        }
+    }
+
     public void showInlineMessage(String message) {
         System.out.println();
         System.out.println(GREEN + "✓ " + message + RESET);

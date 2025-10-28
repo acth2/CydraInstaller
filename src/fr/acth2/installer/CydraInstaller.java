@@ -258,11 +258,43 @@ public class CydraInstaller {
     }
 
     private String getUserInfoInput() {
-        System.out.print("\nCommand (u=up, d=down, e=enter, c=confirm, q=quit): ");
+        try {
+            while (System.in.available() > 0) {
+                System.in.read();
+            }
+
+            int firstChar = System.in.read();
+            if (firstChar == 27) {
+                int secondChar = System.in.read();
+                int thirdChar = System.in.read();
+
+                if (secondChar == 91) {
+                    switch (thirdChar) {
+                        case 65: return "up";
+                        case 66: return "down";
+                        case 67: return "right";
+                        case 68: return "left";
+                    }
+                }
+            }
+
+            else if (firstChar == 10 || firstChar == 13) {
+                return "enter";
+            }
+
+            else {
+                char ch = (char) firstChar;
+                if (ch == 'c' || ch == 'C') return "confirm";
+                if (ch == 'q' || ch == 'Q') return "quit";
+                if (ch == ' ') return "enter";
+            }
+        } catch (IOException e) {}
+
+        System.out.print("\nCommand (arrows=nav, enter=select, c=confirm, q=quit): ");
         String input = ui.scanner.nextLine().trim().toLowerCase();
         if (input.equals("u")) return "up";
         if (input.equals("d")) return "down";
-        if (input.equals("e")) return "enter";
+        if (input.equals("e") || input.equals("")) return "enter";
         if (input.equals("c")) return "confirm";
         if (input.equals("q")) return "quit";
         return "enter";

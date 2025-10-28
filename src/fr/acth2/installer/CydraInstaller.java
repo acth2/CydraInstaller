@@ -198,11 +198,11 @@ public class CydraInstaller {
                         "Manual partitioning",
                         "Use existing partitions"
                 ));
-                menuOptions.add("← Back to main menu");
+                menuOptions.add("<- Back to main menu");
 
                 String choice = ui.selectFromList("Select partitioning method", menuOptions);
 
-                if (choice.equals("← Back to main menu")) {
+                if (choice.equals("<- Back to main menu")) {
                     return;
                 }
 

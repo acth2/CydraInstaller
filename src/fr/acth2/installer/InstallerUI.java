@@ -10,8 +10,9 @@ public class InstallerUI {
     private static final String BLUE_BG = "\u001B[44m";
     private static final String WHITE_BOLD = "\u001B[1;37m";
     private static final String RESET = "\u001B[0m";
-    private static final String BLUE = "\u001B[34m";
     private static final String RED = "\033[0;31m";
+    private static final String BLUE = "\u001B[34m";
+    private static final String RED_BG = "\u001B[41m";
     private static final String GREEN = "\u001B[32m";
 
     private Scanner scanner;
@@ -64,7 +65,7 @@ public class InstallerUI {
         CydraInstaller.error = true;
         clearAndShowFullScreen();
 
-        String[] lines = splitMessage(RED + "ERROR: " + error, Math.min(terminalWidth - 10, 70));
+        String[] lines = splitMessage(RED + "ERROR: " + error + RESET, Math.min(terminalWidth - 10, 70) + 19);
         showContentBox(lines);
         waitForEnter();
     }
@@ -178,9 +179,9 @@ public class InstallerUI {
             System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
             System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
         } else {
-            System.out.println(RED + WHITE_BOLD + headerLine + RESET);
-            System.out.println(RED + WHITE_BOLD + centerText("CydraLite Installer encountered an error.", terminalWidth) + RESET);
-            System.out.println(RED + WHITE_BOLD + headerLine + RESET);
+            System.out.println(RED_BG + WHITE_BOLD + headerLine + RESET);
+            System.out.println(RED_BG + WHITE_BOLD + centerText("CydraLite Installer encountered an error.", terminalWidth) + RESET);
+            System.out.println(RED_BG + WHITE_BOLD + headerLine + RESET);
         }
     }
 

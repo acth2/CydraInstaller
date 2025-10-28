@@ -117,6 +117,7 @@ public class CydraInstaller {
         ui.showMessage("Thanks to the LFS & BLFS team for everything !");
     }
 
+    private boolean multipleSelectionMode = false;
     private void getUserInfos() {
         ui.showSection("SYSTEM CONFIGURATION");
 
@@ -150,24 +151,14 @@ public class CydraInstaller {
 
         int currentField = 0;
         boolean completed = false;
-
-        CLIMultipleQuestionsHandler handler = new CLIMultipleQuestionsHandler();
-        handler.setMultipleSelectionMode(true);
+        boolean quickSelectMode = true; // Set this to true for auto-advance
 
         while (!completed) {
             ui.clearAndShowFullScreen();
             showUserInfoHeader();
             showUserInfoForm(fields, descriptions, currentField);
 
-            String autoInput = handler.getNextInput();
-            String input;
-
-            if (autoInput != null) {
-                input = autoInput;
-                System.out.println("Auto-detected: " + input);
-            } else {
-                input = getUserInfoInput();
-            }
+            String input = getUserInfoInput();
 
             switch (input) {
                 case "up":
@@ -177,10 +168,10 @@ public class CydraInstaller {
                     currentField = Math.min(fields.length - 1, currentField + 1);
                     break;
                 case "enter":
-                case "space":
                     if (editField(currentField)) {
                         updateFieldDisplay(fields, currentField);
-                        if (currentField < fields.length - 1) {
+                        // Auto-advance to next field if quick select mode is enabled
+                        if (quickSelectMode && currentField < fields.length - 1) {
                             currentField++;
                         }
                     }
@@ -197,8 +188,6 @@ public class CydraInstaller {
                     break;
             }
         }
-
-        handler.setMultipleSelectionMode(false);
     }
 
     private void showUserInfoHeader() {

@@ -111,9 +111,10 @@ public class CydraInstaller {
     private void showInformations() {
         ui.showSection("INTRODUCTION");
 
+
         ui.showMessage("Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE", true);
-        ui.showMessage("Installer code on: https://github.com/acth2/CydraInstaller", true);
-        ui.showMessage("Thanks to the LFS & BLFS team for everything !");
+        ui.showContentBox(ui.splitMessage("This is an open-source project: https://github.com/acth2/CydraInstaller/tree/master", Math.min(ui.getTerminalWidth() - 10, 70)));
+        ui.showContentBox(ui.splitMessage("Thanks to the LFS & BLFS team for everything !", Math.min(ui.getTerminalWidth() - 10, 70)));
     }
 
     private boolean multipleSelectionMode = false;

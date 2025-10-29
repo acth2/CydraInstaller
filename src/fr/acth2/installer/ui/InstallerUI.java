@@ -299,7 +299,7 @@ public class InstallerUI {
         return bar.toString();
     }
 
-    private void showContentBox(String[] contentLines) {
+    public void showContentBox(String[] contentLines) {
         if (contentLines == null || contentLines.length == 0) {
             return;
         }
@@ -326,7 +326,7 @@ public class InstallerUI {
         System.out.println(centerText(bottom, terminalWidth));
     }
 
-    private String[] splitMessage(String message, int maxWidth) {
+    public String[] splitMessage(String message, int maxWidth) {
         if (message == null || message.length() <= maxWidth) {
             return new String[]{message};
         }

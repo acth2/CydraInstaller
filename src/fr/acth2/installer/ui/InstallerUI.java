@@ -47,7 +47,7 @@ public class InstallerUI {
         clearAndShowFullScreen();
 
         String[] content = {sectionName};
-        showContentBox(content);
+        //showContentBox(content);
     }
 
     public void showMessage(String message) {

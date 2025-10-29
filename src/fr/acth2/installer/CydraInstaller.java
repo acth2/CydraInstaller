@@ -110,6 +110,7 @@ public class CydraInstaller {
 
     private void showInformations() {
         ui.showSection("INTRODUCTION");
+        ui.clearAndShowFullScreen();
 
         String[] message1 = {"Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE"};
         ui.showContentBoxNoClear(message1);

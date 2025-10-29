@@ -198,7 +198,7 @@ public class CydraInstaller {
 
     private void showUserInfoHeader() {
         System.out.println();
-        String header = "System Configuration - Use arrow keys to navigate, Enter to edit, C to confirm";
+        String header = "System Configuration - Please complete the form.";
         System.out.println(ui.centerText(header, ui.getTerminalWidth()));
         System.out.println();
     }

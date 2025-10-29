@@ -111,8 +111,8 @@ public class CydraInstaller {
     private void showInformations() {
         ui.showSection("INTRODUCTION");
 
-        ui.showMessage("Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE");
-        ui.showMessage("Installer code on: https://github.com/acth2/CydraInstaller");
+        ui.showMessage("Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE", true);
+        ui.showMessage("Installer code on: https://github.com/acth2/CydraInstaller", true);
         ui.showMessage("Thanks to the LFS & BLFS team for everything !");
     }
 
@@ -466,7 +466,7 @@ public class CydraInstaller {
             for (String error : errors) {
                 errorMsg.append("- ").append(error).append("\n");
             }
-            errorMsg.append("\nPress any key to return to the form...");
+            errorMsg.append("\nPress ENTER to return to the form...");
 
             System.out.println(ui.centerText("VALIDATION ERRORS", ui.getTerminalWidth()));
             System.out.println();
@@ -502,10 +502,8 @@ public class CydraInstaller {
                         "Manual partitioning",
                         "Use existing partitions"
                 ));
-                menuOptions.add("<- Back to main menu");
 
                 String choice = ui.selectFromList("Select partitioning method", menuOptions);
-
                 if (choice.equals("<- Back to main menu")) {
                     return;
                 }

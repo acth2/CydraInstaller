@@ -4,6 +4,8 @@ import fr.acth2.installer.CydraInstaller;
 
 import java.io.Console;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
@@ -55,6 +57,24 @@ public class InstallerUI {
 
         String[] lines = splitMessage(message, Math.min(terminalWidth - 10, 70));
         showContentBox(lines);
+        waitForEnter();
+    }
+
+    public void showMessages(List<String> messages) {
+        clearAndShowFullScreen();
+
+        List<String> allLines = new ArrayList<>();
+        for (String message : messages) {
+            String[] lines = splitMessage(message, Math.min(terminalWidth - 10, 70));
+            allLines.addAll(Arrays.asList(lines));
+            allLines.add("");
+        }
+
+        if (!allLines.isEmpty() && allLines.get(allLines.size() - 1).isEmpty()) {
+            allLines.remove(allLines.size() - 1);
+        }
+
+        showContentBox(allLines.toArray(new String[0]));
         waitForEnter();
     }
 

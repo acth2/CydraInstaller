@@ -110,11 +110,13 @@ public class CydraInstaller {
 
     private void showInformations() {
         ui.showSection("INTRODUCTION");
+        List<String> messages = Arrays.asList(
+                "Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE",
+                "This is an open-source project: https://github.com/acth2/CydraInstaller/tree/master",
+                "Thanks to the LFS & BLFS team for everything !"
+        );
 
-
-        ui.showMessage("Licenses on: https://github.com/acth2/CydraProject/blob/main/LICENSE", true);
-        ui.showContentBox(ui.splitMessage("This is an open-source project: https://github.com/acth2/CydraInstaller/tree/master", Math.min(ui.getTerminalWidth() - 10, 70)));
-        ui.showContentBox(ui.splitMessage("Thanks to the LFS & BLFS team for everything !", Math.min(ui.getTerminalWidth() - 10, 70)));
+        ui.showMessages(messages);
     }
 
     private boolean multipleSelectionMode = false;

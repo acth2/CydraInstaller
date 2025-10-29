@@ -4,8 +4,6 @@ import fr.acth2.installer.CydraInstaller;
 
 import java.io.Console;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
@@ -60,22 +58,33 @@ public class InstallerUI {
         waitForEnter();
     }
 
-    public void showMessages(List<String> messages) {
-        clearAndShowFullScreen();
-
-        List<String> allLines = new ArrayList<>();
-        for (String message : messages) {
-            String[] lines = splitMessage(message, Math.min(terminalWidth - 10, 70));
-            allLines.addAll(Arrays.asList(lines));
-            allLines.add("");
+    public void showContentBoxNoClear(String[] contentLines) {
+        if (contentLines == null || contentLines.length == 0) {
+            return;
         }
 
-        if (!allLines.isEmpty() && allLines.get(allLines.size() - 1).isEmpty()) {
-            allLines.remove(allLines.size() - 1);
+        int maxLineLength = 0;
+        for (String line : contentLines) {
+            if (line != null && line.length() > maxLineLength) {
+                maxLineLength = line.length();
+            }
         }
 
-        showContentBox(allLines.toArray(new String[0]));
-        waitForEnter();
+        int boxWidth = Math.min(terminalWidth - 4, Math.max(maxLineLength + 6, 20));
+        String border = "#" + "#".repeat(boxWidth - 2) + "#";
+
+        System.out.println(centerText(border, terminalWidth));
+
+        for (String line : contentLines) {
+            if (line == null) continue;
+            String paddedLine = "|" + centerText(line, boxWidth - 2) + "|";
+            System.out.println(centerText(paddedLine, terminalWidth));
+        }
+
+        String bottom = "#" + "#".repeat(boxWidth - 2) + "#";
+        System.out.println(centerText(bottom, terminalWidth));
+
+        System.out.println();
     }
 
     public void showMessage(String message, boolean informative) {

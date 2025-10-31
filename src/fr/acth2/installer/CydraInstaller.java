@@ -73,13 +73,13 @@ public class CydraInstaller {
 
     private void performInstallation() {
         try {
-            executeDiskPartitioning();
+            //PREPARE THE DISK.
             ui.updateProgress(5);
 
-            diskInstall();
+            //COPY THE SFS FILE CONTENT OF THE OS INTO THE /
             ui.updateProgress(6);
 
-            grubConfigure();
+            //CONFIGURE GRUB
             ui.updateProgress(7);
 
             installCydra();
@@ -464,12 +464,13 @@ public class CydraInstaller {
         return true;
     }
 
-    private String partitioningMethod;
-    private String selectedDisk;
-    private String partitioningScheme;
-
     private void diskPartition() {
         ui.showSection("DISK PARTITIONING");
+
+        String selectedDrive;
+        String selectedSwap = enableSwap ?   "" : null;
+        String selectedEfi  = isEfiSystem() ? "" : null;
+
 
     }
     private boolean isEfiSystem() {

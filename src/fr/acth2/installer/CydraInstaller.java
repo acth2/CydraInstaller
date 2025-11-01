@@ -545,9 +545,15 @@ public class CydraInstaller {
 
             selectedDrive = selectedDrive.substring(0, selectedDrive.indexOf(" "));
 
-            ui.showMessage("Opening cfdisk for: " + selectedDrive);
-            ui.showMessage("Please configure partitions in cfdisk. When finished, save and exit cfdisk to continue.");
-            ui.showMessage("Press ENTER to launch cfdisk...");
+            String[] message1 = {"Opening cfdisk for: " + selectedDrive};
+            ui.showContentBoxNoClear(message1);
+
+            String[] message2 = {"Please configure partitions in cfdisk. When finished, save and exit cfdisk to continue."};
+            ui.showContentBoxNoClear(message2);
+
+            String[] message3 = {"Press ENTER to launch cfdisk..."};
+            ui.showContentBoxNoClear(message3);
+
             scanner.nextLine();
 
             ProcessBuilder pb = new ProcessBuilder("cfdisk", selectedDrive);

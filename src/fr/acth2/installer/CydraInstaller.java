@@ -54,9 +54,7 @@ public class CydraInstaller {
             ui.updateProgress(4);
 
             if (ui.confirmAction("From here. Your PC data will be erased. Continue?")) {
-                if (validateInputs()) {
-                    performInstallation();
-                }
+                performInstallation();
             }
         } catch (Exception e) {
             ui.showError("Installation failed: " + e.getMessage());
@@ -101,17 +99,6 @@ public class CydraInstaller {
             ui.showError("This installer must be run as root!");
             System.exit(1);
         }
-    }
-
-    private boolean validateInputs() {
-        if (password == null || username == null || machineName == null || chosenPartition == null) {
-            ui.showError("Missing required information. Installation failed.");
-            return false;
-        } else if (isWireless && (networkName == null || networkPassword == null)) {
-            ui.showError("Missing network information. Installation failed.");
-            return false;
-        }
-        return true;
     }
 
     private void showInformations() {

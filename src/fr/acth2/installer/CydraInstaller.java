@@ -576,13 +576,19 @@ public class CydraInstaller {
             chosenPartition = ui.selectFromList("Select root partition (for / mount point):", partitions);
 
             if (isEfiSystem()) {
-                List<String> efiPartitions = getEfiPartitions(partitions);
-                if (!efiPartitions.isEmpty()) {
-                    efiPartition = ui.selectFromList("Select EFI system partition (for /boot/efi mount point):", efiPartitions);
-                } else {
-                    ui.showMessage("No EFI partition found. EFI system requires a FAT32 partition mounted at /boot/efi. Please retry");
+                List<String> remainingPartitions = new ArrayList<>();
+                for (String partition : partitions) {
+                    if (!partition.equals(chosenPartition)) {
+                        remainingPartitions.add(partition);
+                    }
+                }
+
+                if (remainingPartitions.isEmpty()) {
+                    ui.showError("No other partitions available for EFI system. Please create at least 2 partitions. Please retry.");
                     diskPartition();
                 }
+
+                efiPartition = ui.selectFromList("Select partition for EFI system (will be formatted as FAT32):", remainingPartitions);
             }
 
             ui.showMessage("Partition configuration completed.");

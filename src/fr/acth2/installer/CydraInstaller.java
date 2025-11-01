@@ -69,12 +69,6 @@ public class CydraInstaller {
             diskPartition();
             ui.updateProgress(5);
 
-            //COPY THE SFS FILE CONTENT OF THE OS INTO THE /
-            ui.updateProgress(6);
-
-            //CONFIGURE GRUB
-            ui.updateProgress(7);
-
             installCydra();
             ui.updateProgress(8);
 
@@ -694,15 +688,11 @@ public class CydraInstaller {
         ui.showSection("INSTALLING CYDRA");
 
         try {
-            if (!chosenPartition.matches(".*[0-9]")) {
-                createPartition(chosenPartition);
-                formatPartition(chosenPartition + "1");
-            } else {
-                formatPartition(chosenPartition);
+            if (isEfiSystem()) {
+                formatEFI(efiPartition);
             }
 
-            String mountPartition = chosenPartition.matches(".*[0-9]") ? chosenPartition : chosenPartition + "1";
-            mountPartition(mountPartition, "/mnt/install");
+            mountPartition(chosenPartition, "/mnt/install");
 
             extractSystem();
             configureSystem();
@@ -710,31 +700,13 @@ public class CydraInstaller {
             if (enableSwap) {
                 createSwapFile();
             }
-
-            ui.showMessage("Installation completed successfully");
-
         } catch (Exception e) {
             ui.showError("Error during Cydra installation: " + e.getMessage());
         }
     }
 
-    private void createPartition(String device) throws IOException, InterruptedException {
-        Process process = Runtime.getRuntime().exec(new String[]{"fdisk", device});
-        try (PrintWriter writer = new PrintWriter(process.getOutputStream())) {
-            writer.println("n");
-            writer.println("p");
-            writer.println("1");
-            writer.println();
-            writer.println();
-            writer.println("w");
-        }
-        if (process.waitFor() != 0) {
-            throw new IOException("Partition creation failed");
-        }
-    }
-
-    private void formatPartition(String partition) throws IOException, InterruptedException {
-        Process process = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", "-F", partition});
+    private void formatEFI(String partition) throws IOException, InterruptedException {
+        Process process = Runtime.getRuntime().exec(new String[]{"mkfs.vfat", "-F", partition});
         if (process.waitFor() != 0) {
             throw new IOException("Formatting partition failed");
         }
@@ -758,6 +730,7 @@ public class CydraInstaller {
 
     private void configureSystem() throws IOException {
         String chosenPartitionUuid = getPartitionUuid(chosenPartition);
+        String efiPartitionUuid = getPartitionUuid(efiPartition);
 
         Path fstabPath = Paths.get("/mnt/install/etc/fstab");
         Files.createDirectories(fstabPath.getParent());
@@ -765,10 +738,14 @@ public class CydraInstaller {
         List<String> fstabLines = new ArrayList<>();
         fstabLines.add("#CydraLite FSTAB File, Make a backup if you want to modify it..");
         fstabLines.add("");
-        fstabLines.add("UUID=" + chosenPartitionUuid + "     /            ext4    defaults            1     1");
+        fstabLines.add("UUID=" + chosenPartitionUuid + "      /            ext4    defaults                                1     1");
 
         if (enableSwap) {
-            fstabLines.add("/swapfile                         swap         swap    pri=1               0     0");
+            fstabLines.add("/swapfile                         swap         swap    pri=1                                   0     0");
+        }
+
+        if (isEfiSystem()) {
+            fstabLines.add("UUID=" + efiPartitionUuid + "     /boot/efi    vfat    codepage=437,iocharset=iso8859-1        0     1");
         }
 
         Files.write(fstabPath, fstabLines);
@@ -828,7 +805,6 @@ public class CydraInstaller {
         );
 
         Files.write(wpaSupplicantPath, wpaConfig);
-        ui.showMessage("Wireless network configuration completed", true);
     }
 
     private void createSwapFile() throws IOException, InterruptedException {
@@ -850,8 +826,6 @@ public class CydraInstaller {
         if (mkswapProcess.waitFor() != 0) {
             throw new IOException("Failed to initialize swap space");
         }
-
-        ui.showMessage(swapSize + "GB swapfile is created.. (" + chosenPartition + ")", true);
     }
 
     private void createUserAccount() throws IOException, InterruptedException {
@@ -860,13 +834,23 @@ public class CydraInstaller {
         Process userAddProcess = Runtime.getRuntime().exec(new String[]{
                 "chroot", "/mnt/install", "useradd", "-m", "-G", "wheel", "-s", "/bin/bash", username
         });
+
+        Process addSudoerProcess = Runtime.getRuntime().exec(new String[]{
+                "chroot", "/mnt/install", "usermod", "-a", "-G", "sudo", username
+        });
+
         if (userAddProcess.waitFor() != 0) {
             throw new IOException("Failed to create user account");
+        }
+
+        if (addSudoerProcess.waitFor() != 0) {
+            throw new IOException("Failed to add user to sudoer");
         }
 
         Process passwdProcess = Runtime.getRuntime().exec(new String[]{
                 "chroot", "/mnt/install", "chpasswd"
         });
+
         try (PrintWriter writer = new PrintWriter(passwdProcess.getOutputStream())) {
             writer.println(username + ":" + password);
             writer.println("root:" + rootPassword);
@@ -874,8 +858,6 @@ public class CydraInstaller {
         if (passwdProcess.waitFor() != 0) {
             throw new IOException("Failed to set passwords");
         }
-
-        ui.showMessage("User account created successfully", true);
     }
 
     private void systemConfiguration() throws IOException, InterruptedException {
@@ -896,8 +878,6 @@ public class CydraInstaller {
                 "chroot", "/mnt/install", "systemd-machine-id-setup"
         });
         hostidProcess.waitFor();
-
-        ui.showMessage("System configuration completed", true);
     }
 
     private void configureFirewall() throws IOException, InterruptedException {
@@ -939,11 +919,6 @@ public class CydraInstaller {
                 Process umountEfi = Runtime.getRuntime().exec(new String[]{"umount", "/mnt/efi"});
                 umountEfi.waitFor();
             }
-
-            Process umountTemp = Runtime.getRuntime().exec(new String[]{"umount", "/mnt/temp"});
-            umountTemp.waitFor();
-
-            ui.showMessage("Cleanup completed", true);
         } catch (Exception e) {
             ui.showError("Error during cleanup: " + e.getMessage());
         }
@@ -958,7 +933,7 @@ public class CydraInstaller {
                 ui.showError("Reboot fail. Proceed manually");
             }
         } else {
-            ui.showMessage("Thanks for using the CydraLite installer", true);
+            ui.showMessage("Thanks for using the CydraLite installer");
         }
     }
 }

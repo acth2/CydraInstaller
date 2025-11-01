@@ -643,10 +643,34 @@ public class CydraInstaller {
         try {
             for (String partition : partitions) {
                 String partDevice = partition.substring(0, partition.indexOf(" "));
-                Process process = Runtime.getRuntime().exec(new String[]{"blkid", "-o", "value", "-s", "TYPE", partDevice});
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                String fstype = reader.readLine();
-                if ("vfat".equals(fstype)) {
+
+                Process typeProcess = Runtime.getRuntime().exec(new String[]{"blkid", "-o", "value", "-s", "PART_ENTRY_TYPE", partDevice});
+                BufferedReader typeReader = new BufferedReader(new InputStreamReader(typeProcess.getInputStream()));
+                String partType = typeReader.readLine();
+                typeProcess.waitFor();
+
+                Process fsProcess = Runtime.getRuntime().exec(new String[]{"blkid", "-o", "value", "-s", "TYPE", partDevice});
+                BufferedReader fsReader = new BufferedReader(new InputStreamReader(fsProcess.getInputStream()));
+                String fstype = fsReader.readLine();
+                fsProcess.waitFor();
+
+                boolean isEfi = false;
+
+                if (partType != null) {
+                    if (partType.equalsIgnoreCase("c12a7328-f81f-11d2-ba4b-00a0c93ec93b")) {
+                        isEfi = true;
+                    }
+
+                    else if (partType.equalsIgnoreCase("ef")) {
+                        isEfi = true;
+                    }
+                }
+
+                if (fstype != null && fstype.equalsIgnoreCase("vfat")) {
+                    isEfi = true;
+                }
+
+                if (isEfi) {
                     efiPartitions.add(partition);
                 }
             }

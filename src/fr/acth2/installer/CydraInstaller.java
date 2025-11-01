@@ -563,16 +563,14 @@ public class CydraInstaller {
 
             if (result != 0) {
                 ui.showError("cfdisk exited with error code: " + result);
+                System.exit(1);
                 return;
             }
 
-            ui.showMessage("Reading partition table...");
-            Thread.sleep(2000);
-
             List<String> partitions = getPartitionsOnDrive(selectedDrive);
             if (partitions.isEmpty()) {
-                ui.showError("No partitions found on " + selectedDrive + ". Please create partitions in cfdisk.");
-                return;
+                ui.showMessage("No partitions found on " + selectedDrive + ". Please create partitions in cfdisk. Please retry");
+                diskPartition();
             }
 
             chosenPartition = ui.selectFromList("Select root partition (for / mount point):", partitions);
@@ -582,7 +580,8 @@ public class CydraInstaller {
                 if (!efiPartitions.isEmpty()) {
                     efiPartition = ui.selectFromList("Select EFI system partition (for /boot/efi mount point):", efiPartitions);
                 } else {
-                    ui.showError("No EFI partition found. EFI system requires a FAT32 partition mounted at /boot/efi.");
+                    ui.showMessage("No EFI partition found. EFI system requires a FAT32 partition mounted at /boot/efi. Please retry");
+                    diskPartition();
                 }
             }
 

@@ -51,16 +51,11 @@ public class CydraInstaller {
             showInformations();
 
             getUserInfos();
-            ui.updateProgress(1);
-
-            diskPartition();
             ui.updateProgress(4);
 
-            if (ui.confirmAction("Install the OS?")) {
+            if (ui.confirmAction("From here. Your PC data will be erased. Continue?")) {
                 if (validateInputs()) {
-                    if (ui.confirmAction("!! WARNING !!\n\nEVERY DATA ON THE DISK WILL BE ERASED.\nDo you want to continue?")) {
-                        performInstallation();
-                    }
+                    performInstallation();
                 }
             }
         } catch (Exception e) {
@@ -73,7 +68,7 @@ public class CydraInstaller {
 
     private void performInstallation() {
         try {
-            //PREPARE THE DISK.
+            diskPartition();
             ui.updateProgress(5);
 
             //COPY THE SFS FILE CONTENT OF THE OS INTO THE /
@@ -467,12 +462,119 @@ public class CydraInstaller {
     private void diskPartition() {
         ui.showSection("DISK PARTITIONING");
 
-        String selectedDrive;
-        String selectedSwap = enableSwap ?   "" : null;
-        String selectedEfi  = isEfiSystem() ? "" : null;
+        try {
+            List<String> drives = getAvailableDrives();
+            if (drives.isEmpty()) {
+                ui.showError("No storage drives found.");
+                System.exit(1);
+            }
 
+            String selectedDrive = ui.selectFromList("Select drive to partition:", drives);
+            if (selectedDrive == null || selectedDrive.startsWith("<-")) {
+                return;
+            }
 
+            selectedDrive = selectedDrive.substring(0, selectedDrive.indexOf(" "));
+
+            ui.showMessage("Opening cfdisk for: " + selectedDrive);
+            ui.showMessage("Please configure partitions in cfdisk. When finished, close cfdisk to continue.");
+
+            Process cfdiskProcess = Runtime.getRuntime().exec(new String[]{"cfdisk", selectedDrive});
+            int result = cfdiskProcess.waitFor();
+
+            if (result != 0) {
+                ui.showError("cfdisk exited with error code: " + result);
+                return;
+            }
+
+            List<String> partitions = getPartitionsOnDrive(selectedDrive);
+            if (partitions.isEmpty()) {
+                ui.showError("No partitions found on " + selectedDrive + ". Please create partitions in cfdisk.");
+                return;
+            }
+
+            chosenPartition = ui.selectFromList("Select root partition (for / mount point):", partitions);
+
+            if (isEfiSystem()) {
+                List<String> efiPartitions = getEfiPartitions(partitions);
+                if (!efiPartitions.isEmpty()) {
+                    efiPartition = ui.selectFromList("Select EFI system partition (for /boot/efi mount point):", efiPartitions);
+                } else {
+                    ui.showError("No EFI partition found. EFI system requires a FAT32 partition mounted at /boot/efi.");
+                }
+            }
+
+            ui.showMessage("Partition configuration completed.");
+
+        } catch (Exception e) {
+            ui.showError("Error during disk partitioning: " + e.getMessage());
+        }
     }
+
+    private List<String> getAvailableDrives() {
+        List<String> drives = new ArrayList<>();
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{"lsblk", "-d", "-n", "-o", "NAME,SIZE,TYPE"});
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.trim().split("\\s+");
+                if (parts.length >= 3 && "disk".equals(parts[2])) {
+                    String driveName = parts[0];
+                    if (!driveName.matches("^(ram|loop|fd|sr).*")) {
+                        String size = parts[1];
+                        drives.add("/dev/" + driveName + " (" + size + ")");
+                    }
+                }
+            }
+            process.waitFor();
+        } catch (Exception e) {
+            ui.showError("Error detecting drives: " + e.getMessage());
+        }
+        return drives;
+    }
+
+    private List<String> getPartitionsOnDrive(String drive) {
+        List<String> partitions = new ArrayList<>();
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{"lsblk", "-ln", "-o", "NAME,SIZE,TYPE", drive});
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.contains("part")) {
+                    String[] parts = line.trim().split("\\s+", 3);
+                    if (parts.length >= 2) {
+                        partitions.add("/dev/" + parts[0] + " (" + parts[1] + ")");
+                    }
+                }
+            }
+            process.waitFor();
+        } catch (Exception e) {
+            ui.showError("Error reading partitions: " + e.getMessage());
+        }
+        return partitions;
+    }
+
+    private List<String> getEfiPartitions(List<String> partitions) {
+        List<String> efiPartitions = new ArrayList<>();
+        try {
+            for (String partition : partitions) {
+                String partDevice = partition.substring(0, partition.indexOf(" "));
+                Process process = Runtime.getRuntime().exec(new String[]{"blkid", "-o", "value", "-s", "TYPE", partDevice});
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                String fstype = reader.readLine();
+                if ("vfat".equals(fstype)) {
+                    efiPartitions.add(partition);
+                }
+            }
+        } catch (Exception e) {
+            ui.showError("Error checking partition types: " + e.getMessage());
+        }
+        return efiPartitions;
+    }
+
     private boolean isEfiSystem() {
         return Files.exists(Paths.get("/sys/firmware/efi"));
     }

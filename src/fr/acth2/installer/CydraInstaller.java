@@ -694,14 +694,78 @@ public class CydraInstaller {
 
             mountPartition(chosenPartition, "/mnt/install");
 
+            if (isEfiSystem()) {
+                mountPartition(efiPartition, "/mnt/efi");
+            }
+
             extractSystem();
             configureSystem();
 
             if (enableSwap) {
                 createSwapFile();
             }
+
+            configureBootloader();
         } catch (Exception e) {
             ui.showError("Error during Cydra installation: " + e.getMessage());
+        }
+    }
+
+    private void configureBootloader() throws IOException, InterruptedException {
+        if (isEfiSystem()) {
+            Process process = Runtime.getRuntime().exec(new String[]{"grub-install", "--target=x86_64-", "--efi-directory=/mnt/efi", "--bootloader-id=CydraLite", "--recheck", "--no-floppy"});
+            if (process.waitFor() != 0)
+                throw new IOException("Installation of grub failed: " + process.getErrorStream());
+        } else {
+            Process process = Runtime.getRuntime().exec(new String[]{"grub-install", "--target=i386-pc", chosenPartition});
+            if (process.waitFor() != 0)
+                throw new IOException("Installation of grub failed: " + process.getErrorStream());
+        }
+
+        Path grubPath = Paths.get("/mnt/install/boot/grub/grub.cfg");
+        Files.createDirectories(grubPath.getParent());
+
+        List<String> grubLines = new ArrayList<>();
+        grubLines.add("#Cydralite grub.cfg file. Operate with precaution.");
+        grubLines.add("set default=0");
+        grubLines.add("set timeout=5");
+        grubLines.add("");
+        grubLines.add("insmod part_gpt");
+        grubLines.add("insmod ext2");
+        grubLines.add("set root=" + convertToGrubFormat(chosenPartition));
+        grubLines.add("");
+        grubLines.add("insmod efi_gop");
+        grubLines.add("insmod efi_uga");
+        grubLines.add("if loadfont /boot/grub/fonts/unicode.pf2; then");
+        grubLines.add("  terminal_output gfxterm");
+        grubLines.add("fi");
+        grubLines.add("");
+        grubLines.add("menuentry \"GNU/Linux, CydraLite 6.13.4\" {");
+        grubLines.add("  linux   /boot/vmlinuz-6.13.4-lfs-12.3-systemd root=/dev/sda ro debug");
+        grubLines.add("  initrd  /boot/initrd.img-6.13.4");
+        grubLines.add("}");
+        grubLines.add("");
+        grubLines.add("menuentry \"Firmware Setup\" {");
+        grubLines.add("  fwsetup");
+        grubLines.add("}");
+
+        Files.write(grubPath, grubLines);
+    }
+
+    public static String convertToGrubFormat(String mainPartition) {
+        try {
+            String diskLetter = mainPartition.replaceAll(".*/dev/sd([a-z]).*", "$1");
+            if (diskLetter.isEmpty()) {
+                throw new IllegalArgumentException("Invalid disk format: " + mainPartition);
+            }
+
+            String partitionStr = mainPartition.replaceAll(".*/dev/sd[a-z]([0-9]+)?.*", "$1");
+            int diskNumber = diskLetter.charAt(0) - 'a';
+            int partitionNumber = partitionStr.isEmpty() ? 0 : Integer.parseInt(partitionStr) - 1;
+
+            return String.format("(hd%d,%d)", diskNumber, partitionNumber);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to parse partition: " + mainPartition, e);
         }
     }
 
@@ -813,6 +877,7 @@ public class CydraInstaller {
         Process ddProcess = Runtime.getRuntime().exec(new String[]{
                 "dd", "if=/dev/zero", "of=" + swapfilePath.toString(), "bs=1M", "count=" + (swapSize * 1024)
         });
+
         if (ddProcess.waitFor() != 0) {
             throw new IOException("Swap file creation failed");
         }

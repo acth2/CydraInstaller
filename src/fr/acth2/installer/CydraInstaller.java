@@ -528,6 +528,7 @@ public class CydraInstaller {
             }
 
             chosenPartition = ui.selectFromList("Select root partition (for / mount point):", partitions);
+            chosenPartition = efiPartition.split(" ")[0];
 
             if (isEfiSystem()) {
                 List<String> remainingPartitions = new ArrayList<>();
@@ -543,6 +544,8 @@ public class CydraInstaller {
                 }
 
                 efiPartition = ui.selectFromList("Select partition for EFI system (will be formatted as FAT32):", remainingPartitions);
+                efiPartition = efiPartition.split(" ")[0];
+
             }
 
             ui.showMessage("Partition configuration completed.");

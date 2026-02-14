@@ -415,7 +415,7 @@ public class CydraInstaller {
                 fields[8] = "Wireless: " + (isWireless ? "Enabled (NOT IMPLEMENTED YET)" : "Disabled");
                 break;
             case 9:
-                fields[10] = "SSH: " + (enableSSH ? "Enabled" : "Disabled");
+                fields[9] = "SSH: " + (enableSSH ? "Enabled" : "Disabled");
                 break;
         }
     }

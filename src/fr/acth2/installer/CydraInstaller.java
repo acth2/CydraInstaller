@@ -248,87 +248,56 @@ public class CydraInstaller {
         try {
 
             String[] cmd = {"/bin/sh", "-c", "stty raw -echo </dev/tty"};
-
             Runtime.getRuntime().exec(cmd).waitFor();
-
-
 
             int key = System.in.read();
-
-
-
             cmd = new String[]{"/bin/sh", "-c", "stty cooked echo </dev/tty"};
-
             Runtime.getRuntime().exec(cmd).waitFor();
-
-
 
             if (key == 27) {
 
                 if (System.in.available() > 0) {
 
                     int next1 = System.in.read();
-
                     int next2 = System.in.read();
 
                     if (next1 == 91) {
 
                         if (next2 == 65) return "up";
-
                         if (next2 == 66) return "down";
 
                     }
-
                 }
 
                 return "enter";
 
             } else if (key == 10 || key == 13) {
-
                 return "enter";
-
             } else if (key == 'c' || key == 'C') {
-
                 return "confirm";
-
             } else if (key == 'q' || key == 'Q') {
-
                 return "quit";
-
             } else if (key == ' ') {
-
                 return "enter";
-
             }
 
             return "enter";
 
-
-
         } catch (Exception e) {
-
             try {
-
                 String[] cmd = {"/bin/sh", "-c", "stty cooked echo </dev/tty"};
-
                 Runtime.getRuntime().exec(cmd).waitFor();
 
             } catch (Exception ex) {}
-
-
 
             System.out.print("\nCommand (arrows=nav, enter=select, c=confirm, q=quit): ");
 
             String input = ui.scanner.nextLine().trim().toLowerCase();
 
             if (input.equals("u")) return "up";
-
             if (input.equals("d")) return "down";
-
             if (input.equals("e") || input.equals("")) return "enter";
-
             if (input.equals("c")) return "confirm";
-
             if (input.equals("q")) return "quit";
 
             return "enter";

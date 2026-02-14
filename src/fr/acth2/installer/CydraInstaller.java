@@ -732,7 +732,10 @@ public class CydraInstaller {
     private void formatEFI(String partition) throws IOException, InterruptedException {
         Process process = Runtime.getRuntime().exec(new String[]{"mkfs.vfat", "-F", "32", partition});
         if (process.waitFor() != 0) {
-            throw new IOException("Formatting partition failed");
+
+            InputStream errorStream = process.getErrorStream();
+            String errorMessage = new String(errorStream.readAllBytes());
+            throw new IOException("Formatting partition failed: " + errorMessage);
         }
     }
 

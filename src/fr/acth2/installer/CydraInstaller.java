@@ -22,16 +22,15 @@ public class CydraInstaller {
     private String keyboardLayout;
     private boolean enableSwap;
     private int swapSize;
-    private boolean enableFirewall;
     private boolean enableSSH;
     private String rootPassword;
     public static boolean error = false;
 
-    private static final String LANGUAGE_PATTERN = "^(fr|us|en|de|es|it)$";
+    //private static final String LANGUAGE_PATTERN = "^(fr|us|en|de|es|it)$";
     private static final String HOSTNAME_PATTERN = "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$";
     private static final String USERNAME_PATTERN = "^[a-z_][a-z0-9_-]{0,31}$";
-    private static final String TIMEZONE_PATTERN = "^[A-Za-z]+/[A-Za-z_]+$";
-    private static final String KEYBOARD_PATTERN = "^(us|fr|de|es|it|uk)$";
+    //private static final String TIMEZONE_PATTERN = "^[A-Za-z]+/[A-Za-z_]+$";
+    //private static final String KEYBOARD_PATTERN = "^(us|fr|de|es|it|uk)$";
 
     public CydraInstaller() {
         this.scanner = new Scanner(System.in);
@@ -124,7 +123,6 @@ public class CydraInstaller {
                 "Timezone: " + (timezone != null ? timezone : "Not set"),
                 "Swap File: " + (enableSwap ? swapSize + "GB" : "Disabled"),
                 "Wireless: " + (isWireless ? "Enabled" : "Disabled"),
-                "Firewall: " + (enableFirewall ? "Enabled" : "Disabled"),
                 "SSH: " + (enableSSH ? "Enabled" : "Disabled")
         };
 
@@ -412,10 +410,6 @@ public class CydraInstaller {
                 return true;
 
             case 9:
-                enableFirewall = ui.confirmAction("Enable basic firewall?");
-                return true;
-
-            case 10:
                 enableSSH = ui.confirmAction("Enable SSH server?");
                 return true;
         }
@@ -449,12 +443,9 @@ public class CydraInstaller {
                 fields[7] = "Swap File: " + (enableSwap ? swapSize + "GB" : "Disabled");
                 break;
             case 8:
-                fields[8] = "Wireless: " + (isWireless ? "Enabled" : "Disabled");
+                fields[8] = "Wireless: " + (isWireless ? "Enabled (NOT IMPLEMENTED YET)" : "Disabled");
                 break;
             case 9:
-                fields[9] = "Firewall: " + (enableFirewall ? "Enabled" : "Disabled");
-                break;
-            case 10:
                 fields[10] = "SSH: " + (enableSSH ? "Enabled" : "Disabled");
                 break;
         }
@@ -785,8 +776,9 @@ public class CydraInstaller {
 
     private void extractSystem() throws IOException, InterruptedException {
         Process process = Runtime.getRuntime().exec(new String[]{
-                "tar", "xf", "/root/system.tar.gz", "-C", "/mnt/install"
+                "unsquashfs", "-f", "-d", "/mnt/install",  "/root/filesystem.squashfs"
         });
+
         if (process.waitFor() != 0) {
             throw new IOException("System extraction failed");
         }
@@ -800,22 +792,15 @@ public class CydraInstaller {
         Files.createDirectories(fstabPath.getParent());
 
         List<String> fstabLines = new ArrayList<>();
-        fstabLines.add("#CydraLite FSTAB File, Make a backup if you want to modify it..");
+        fstabLines.add("#CydraLite fstab file. Make a backup before altering its content.");
         fstabLines.add("");
         fstabLines.add("UUID=" + chosenPartitionUuid + "      /            ext4    defaults                                1     1");
-
-        if (enableSwap) {
-            fstabLines.add("/swapfile                         swap         swap    pri=1                                   0     0");
-        }
-
-        if (isEfiSystem()) {
-            fstabLines.add("UUID=" + efiPartitionUuid + "     /boot/efi    vfat    codepage=437,iocharset=iso8859-1        0     1");
-        }
+        if (enableSwap) fstabLines.add("/swapfile                         swap         swap    pri=1                                   0     0");
+        if (isEfiSystem()) fstabLines.add("UUID=" + efiPartitionUuid + "     /boot/efi    vfat    codepage=437,iocharset=iso8859-1        0     1");
 
         Files.write(fstabPath, fstabLines);
 
-        Files.write(Paths.get("/mnt/install/etc/hostname"),
-                Collections.singletonList(machineName));
+        Files.write(Paths.get("/mnt/install/etc/hostname"), Collections.singletonList(machineName));
 
         Path localtimePath = Paths.get("/mnt/install/etc/localtime");
         if (!Files.exists(localtimePath)) {
@@ -830,7 +815,7 @@ public class CydraInstaller {
         Files.write(vconsolePath, Collections.singletonList("KEYMAP=" + keyboardLayout));
 
         if (isWireless) {
-            configureWirelessNetwork();
+            //configureWirelessNetwork();
         }
     }
 
@@ -904,12 +889,20 @@ public class CydraInstaller {
                 "chroot", "/mnt/install", "usermod", "-a", "-G", "sudo", username
         });
 
+        Process rmCydraUsrProcess = Runtime.getRuntime().exec(new String[]{
+                "chroot", "/mnt/install", "userdel", "-f", "cydra"
+        });
+
         if (userAddProcess.waitFor() != 0) {
             throw new IOException("Failed to create user account");
         }
 
         if (addSudoerProcess.waitFor() != 0) {
             throw new IOException("Failed to add user to sudoer");
+        }
+
+        if (rmCydraUsrProcess.waitFor() != 0) {
+            throw new IOException("Failed to remove cydra account");
         }
 
         Process passwdProcess = Runtime.getRuntime().exec(new String[]{
@@ -935,42 +928,10 @@ public class CydraInstaller {
             sshProcess.waitFor();
         }
 
-        if (enableFirewall) {
-            configureFirewall();
-        }
-
         Process hostidProcess = Runtime.getRuntime().exec(new String[]{
                 "chroot", "/mnt/install", "systemd-machine-id-setup"
         });
         hostidProcess.waitFor();
-    }
-
-    private void configureFirewall() throws IOException, InterruptedException {
-        Path firewallRules = Paths.get("/mnt/install/etc/iptables.rules");
-        List<String> rules = Arrays.asList(
-                "*filter",
-                ":INPUT DROP [0:0]",
-                ":FORWARD DROP [0:0]",
-                ":OUTPUT ACCEPT [0:0]",
-                ":TCP - [0:0]",
-                ":UDP - [0:0]",
-                "-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT",
-                "-A INPUT -i lo -j ACCEPT",
-                "-A INPUT -m conntrack --ctstate INVALID -j DROP",
-                "-A INPUT -p icmp -j ACCEPT",
-                "-A INPUT -p tcp -m tcp --dport 22 -j ACCEPT",
-                "-A INPUT -p udp -m udp --dport 5353 -j ACCEPT",
-                "-A INPUT -p tcp -m tcp --dport 80 -j ACCEPT",
-                "-A INPUT -p tcp -m tcp --dport 443 -j ACCEPT",
-                "-A INPUT -j REJECT --reject-with icmp-port-unreachable",
-                "COMMIT"
-        );
-        Files.write(firewallRules, rules);
-
-        Process enableFirewallProcess = Runtime.getRuntime().exec(new String[]{
-                "chroot", "/mnt/install", "systemctl", "enable", "iptables"
-        });
-        enableFirewallProcess.waitFor();
     }
 
     private void cleanLive() {

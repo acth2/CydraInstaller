@@ -52,7 +52,7 @@ public class CydraInstaller {
             getUserInfos();
             ui.updateProgress(4);
 
-            if (ui.confirmAction("From here. Your PC data will be erased. Continue?")) {
+            if (ui.confirmAction("The next step will erase the data on your PC. Continue?")) {
                 performInstallation();
             }
         } catch (Exception e) {
@@ -686,7 +686,7 @@ public class CydraInstaller {
         Files.createDirectories(grubPath.getParent());
 
         List<String> grubLines = new ArrayList<>();
-        grubLines.add("#Cydralite grub.cfg file. Operate with precaution.");
+        grubLines.add("#Cydralite grub.cfg file.");
         grubLines.add("set default=0");
         grubLines.add("set timeout=5");
         grubLines.add("");
@@ -742,7 +742,9 @@ public class CydraInstaller {
     private void mountPartition(String partition, String mountPoint, String fsType) throws IOException, InterruptedException {
         Process process = Runtime.getRuntime().exec(new String[]{"mount", "-t", fsType, partition.split(" ")[0], mountPoint});
         if (process.waitFor() != 0) {
-            throw new IOException("Mounting partition failed");
+            InputStream errorStream = process.getErrorStream();
+            String errorMessage = new String(errorStream.readAllBytes());
+            throw new IOException("Formatting partition failed: " + errorMessage);
         }
     }
 
@@ -752,7 +754,9 @@ public class CydraInstaller {
         });
 
         if (process.waitFor() != 0) {
-            throw new IOException("System extraction failed");
+            InputStream errorStream = process.getErrorStream();
+            String errorMessage = new String(errorStream.readAllBytes());
+            throw new IOException("Formatting partition failed: " + errorMessage);
         }
     }
 

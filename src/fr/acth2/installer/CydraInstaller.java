@@ -681,14 +681,34 @@ public class CydraInstaller {
     }
 
     private void configureBootloader() throws IOException, InterruptedException {
+        Process process;
         if (isEfiSystem()) {
-            Process process = Runtime.getRuntime().exec(new String[]{"grub-install", "--target=x86_64-", "--efi-directory=/mnt/efi", "--bootloader-id=CydraLite", "--recheck", "--no-floppy"});
-            if (process.waitFor() != 0)
-                throw new IOException("Installation of grub failed: " + process.getErrorStream());
+            process = Runtime.getRuntime().exec(new String[]{
+                    "grub-install",
+                    "--target=x86_64-efi",
+                    "--efi-directory=/mnt/efi",
+                    "--bootloader-id=CydraLite",
+                    "--recheck",
+                    "--no-floppy"
+            });
         } else {
-            Process process = Runtime.getRuntime().exec(new String[]{"grub-install", "--target=i386-pc", chosenPartition.split(" ")[0]});
-            if (process.waitFor() != 0)
-                throw new IOException("Installation of grub failed: " + process.getErrorStream());
+            process = Runtime.getRuntime().exec(new String[]{
+                    "grub-install",
+                    "--target=i386-pc",
+                    chosenPartition.split(" ")[0]
+            });
+        }
+
+
+        String errorOutput = new String(process.getErrorStream().readAllBytes());
+        String stdOutput = new String(process.getInputStream().readAllBytes());
+
+        if (process.waitFor() != 0) {
+            throw new IOException(
+                    "Installation of grub failed (exit code " + process.waitFor() + "):\n" +
+                            "STDOUT:\n" + stdOutput + "\n" +
+                            "STDERR:\n" + errorOutput
+            );
         }
 
         Path grubPath = Paths.get("/mnt/install/boot/grub/grub.cfg");
@@ -720,6 +740,7 @@ public class CydraInstaller {
 
         Files.write(grubPath, grubLines);
     }
+
 
     public static String convertToGrubFormat(String mainPartition) {
         mainPartition = mainPartition.split(" ")[0];

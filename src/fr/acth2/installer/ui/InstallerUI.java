@@ -5,6 +5,8 @@ import fr.acth2.installer.CydraInstaller;
 import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Scanner;
 
@@ -37,7 +39,7 @@ public class InstallerUI {
                 "",
                 "Welcome to CydraLite Installer",
                 "This will guide you through the installation",
-                "NOTE: Run better in UEFI"
+                ""
         };
 
         showContentBox(content);
@@ -290,20 +292,22 @@ public class InstallerUI {
     void showHeader() {
         updateTerminalSize();
         String headerLine = " ".repeat(terminalWidth);
-        if (!CydraInstaller.error) {
-            if (currentSectionName == null) {
-                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
-                System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
-                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+        if (isEfiSystem()) {
+            if (!CydraInstaller.error) {
+                if (currentSectionName == null) {
+                    System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+                    System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
+                    System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+                } else {
+                    System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+                    System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer - " + currentSectionName, terminalWidth) + RESET);
+                    System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+                }
             } else {
-                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
-                System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer - " + currentSectionName, terminalWidth) + RESET);
-                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+                System.out.println(RED + WHITE_BOLD + headerLine + RESET);
+                System.out.println(RED + WHITE_BOLD + centerText("CydraLite Installer encountered an error.", terminalWidth) + RESET);
+                System.out.println(RED + WHITE_BOLD + headerLine + RESET);
             }
-        } else {
-            System.out.println(RED + WHITE_BOLD + headerLine + RESET);
-            System.out.println(RED + WHITE_BOLD + centerText("CydraLite Installer encountered an error.", terminalWidth) + RESET);
-            System.out.println(RED + WHITE_BOLD + headerLine + RESET);
         }
     }
 
@@ -455,5 +459,9 @@ public class InstallerUI {
     private void clearScreen() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
+    }
+
+    private boolean isEfiSystem() {
+        return Files.exists(Paths.get("/sys/firmware/efi"));
     }
 }

@@ -74,19 +74,21 @@ public class CydraInstaller {
             diskPartition();
             ui.updateProgress(5);
 
-            installCydra();
-            ui.updateProgress(8);
+            if (ui.confirmAction("Everything setup, are you ready to begin installation?")) {
+                installCydra();
+                ui.updateProgress(8);
 
-            createUserAccount();
-            ui.updateProgress(9);
+                createUserAccount();
+                ui.updateProgress(9);
 
-            systemConfiguration();
-            ui.updateProgress(10);
+                systemConfiguration();
+                ui.updateProgress(10);
 
-            cleanLive();
-            ui.updateProgress(11);
+                cleanLive();
+                ui.updateProgress(11);
 
-            ui.showMessage("The Installation is finished, thanks for using CydraLite !");
+                ui.showMessage("The Installation is finished, thanks for using CydraLite !");
+            }
             offerReboot();
         } catch (Exception e) {
             ui.showError("Error during installation: " + e.getMessage());
@@ -684,7 +686,7 @@ public class CydraInstaller {
             if (process.waitFor() != 0)
                 throw new IOException("Installation of grub failed: " + process.getErrorStream());
         } else {
-            Process process = Runtime.getRuntime().exec(new String[]{"grub-install", "--target=i386-pc", chosenPartition});
+            Process process = Runtime.getRuntime().exec(new String[]{"grub-install", "--target=i386-pc", chosenPartition.split(" ")[0]});
             if (process.waitFor() != 0)
                 throw new IOException("Installation of grub failed: " + process.getErrorStream());
         }
@@ -720,6 +722,7 @@ public class CydraInstaller {
     }
 
     public static String convertToGrubFormat(String mainPartition) {
+        mainPartition = mainPartition.split(" ")[0];
         try {
             String diskLetter = mainPartition.replaceAll(".*/dev/sd([a-z]).*", "$1");
             if (diskLetter.isEmpty()) {
@@ -769,6 +772,7 @@ public class CydraInstaller {
         Process process = Runtime.getRuntime().exec(new String[]{
                 "unsquashfs", "-f", "-d", "/mnt/install",  "/root/filesystem.squashfs"
         });
+        Files.delete(Paths.get("/mnt/install/tarexclude"));
 
         if (process.waitFor() != 0) {
             InputStream errorStream = process.getErrorStream();
@@ -823,11 +827,11 @@ public class CydraInstaller {
     }
 
     private String getPartitionUuid(String partition) throws IOException {
-        Process process = Runtime.getRuntime().exec(new String[]{"blkid", "-s", "UUID", "-o", "value", partition});
+        Process process = Runtime.getRuntime().exec(new String[]{"blkid", "-s", "UUID", "-o", "value", partition.split(" ")[0]});
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         String uuid = reader.readLine();
         if (uuid == null) {
-            throw new IOException("Could not get UUID for partition: " + partition);
+            throw new IOException("Could not get UUID for partition: " + partition.split(" ")[0]);
         }
         return uuid;
     }

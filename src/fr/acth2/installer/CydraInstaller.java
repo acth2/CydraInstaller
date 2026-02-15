@@ -65,6 +65,12 @@ public class CydraInstaller {
 
     private void performInstallation() {
         try {
+            Path mntInstall = Paths.get("/mnt/install");
+            Files.createDirectories(mntInstall.getParent());
+
+            Path mntEfi = Paths.get("/mnt/efi");
+            Files.createDirectories(mntEfi.getParent());
+
             diskPartition();
             ui.updateProgress(5);
 
@@ -648,6 +654,7 @@ public class CydraInstaller {
         ui.showSection("INSTALLING CYDRA");
 
         try {
+            formatEXT4(chosenPartition);
             if (isEfiSystem()) {
                 formatEFI(efiPartition);
             }
@@ -726,6 +733,16 @@ public class CydraInstaller {
             return String.format("(hd%d,%d)", diskNumber, partitionNumber);
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to parse partition: " + mainPartition, e);
+        }
+    }
+
+    private void formatEXT4(String partition) throws IOException, InterruptedException {
+        Process process = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", partition.split(" ")[0]});
+        if (process.waitFor() != 0) {
+
+            InputStream errorStream = process.getErrorStream();
+            String errorMessage = new String(errorStream.readAllBytes());
+            throw new IOException("Formatting partition failed: " + errorMessage);
         }
     }
 

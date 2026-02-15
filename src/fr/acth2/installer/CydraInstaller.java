@@ -550,7 +550,7 @@ public class CydraInstaller {
 
                 efiPartition = ui.selectFromList("Select partition for EFI system", remainingPartitions);
                 try {
-                    Process process = new ProcessBuilder("umount", efiPartition.split(" ")[0])
+                    Process process = new ProcessBuilder("umount", efiPartition.split(" ")[0], "-l", "-f")
                             .inheritIO()
                             .start();
 
@@ -560,7 +560,7 @@ public class CydraInstaller {
             }
 
             try {
-                Process process = new ProcessBuilder("umount", chosenPartition.split(" ")[0])
+                Process process = new ProcessBuilder("umount", chosenPartition.split(" ")[0], "-l", "-f")
                         .inheritIO()
                         .start();
 
@@ -716,9 +716,8 @@ public class CydraInstaller {
         Runtime.getRuntime().exec("mount --bind /sys /mnt/install/sys").waitFor();
 
         if (isEfiSystem()) {
-
-            Runtime.getRuntime().exec("umount -l /mnt/install/efi").waitFor();
-            Runtime.getRuntime().exec("mount " + efiPartition.split(" ")[0] + "/mnt/install/efi").waitFor();
+            Runtime.getRuntime().exec("mkdir /mnt/install/efi").waitFor();
+            Runtime.getRuntime().exec("mount " + efiPartition.split(" ")[0] + " /mnt/install/efi").waitFor();
 
             process = Runtime.getRuntime().exec(new String[]{
                     "chroot", "/mnt/install",

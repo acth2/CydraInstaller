@@ -201,7 +201,7 @@ public class InstallerUI {
             String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
             showContentBox(lines);
 
-            String password = readPasswdMask("> ");
+            String password = readPasswordMasked("> ");
 
             if (password.length() < 4) {
                 showWarning("Password must be at least 4 characters long. Please try again.");
@@ -211,7 +211,7 @@ public class InstallerUI {
             String[] confirmLines = splitMessage("Please confirm your password", Math.min(terminalWidth - 10, 70));
             showContentBox(confirmLines);
 
-            String confirmPassword = readPasswdMask("> ");
+            String confirmPassword = readPasswordMasked("> ");
 
             if (password.equals(confirmPassword)) {
                 return password;
@@ -221,11 +221,18 @@ public class InstallerUI {
         }
     }
 
-    private String readPasswdMask(String prompt) {
+    private String readPasswordMasked(String prompt) {
         System.out.print(prompt);
         StringBuilder password = new StringBuilder();
 
         try {
+            Console console = System.console();
+
+            if (console != null) {
+                char[] pwdChars = console.readPassword();
+                return new String(pwdChars).trim();
+            }
+
             while (true) {
                 int ch = System.in.read();
 
@@ -237,7 +244,7 @@ public class InstallerUI {
                         password.deleteCharAt(password.length() - 1);
                         System.out.print("\b \b");
                     }
-                } else {
+                } else if (ch >= 32 && ch < 127) {
                     password.append((char) ch);
                     System.out.print("*");
                 }

@@ -677,7 +677,7 @@ public class CydraInstaller {
             if (process.waitFor() != 0)
                 throw new IOException("Installation of grub failed: " + process.getErrorStream());
         } else {
-            Process process = Runtime.getRuntime().exec(new String[]{"grub-install", "--target=i386-pc", chosenPartition.split(" ")[0]});
+            Process process = Runtime.getRuntime().exec(new String[]{"grub-install", "--target=i386-pc", chosenPartition});
             if (process.waitFor() != 0)
                 throw new IOException("Installation of grub failed: " + process.getErrorStream());
         }
@@ -686,13 +686,13 @@ public class CydraInstaller {
         Files.createDirectories(grubPath.getParent());
 
         List<String> grubLines = new ArrayList<>();
-        grubLines.add("#Cydralite grub.cfg file.");
+        grubLines.add("#Cydralite grub.cfg file. Operate with precaution.");
         grubLines.add("set default=0");
         grubLines.add("set timeout=5");
         grubLines.add("");
         grubLines.add("insmod part_gpt");
         grubLines.add("insmod ext2");
-        grubLines.add("set root=" + convertToGrubFormat(chosenPartition.split(" ")[0]));
+        grubLines.add("set root=" + convertToGrubFormat(chosenPartition));
         grubLines.add("");
         grubLines.add("insmod efi_gop");
         grubLines.add("insmod efi_uga");
@@ -730,8 +730,7 @@ public class CydraInstaller {
     }
 
     private void formatEFI(String partition) throws IOException, InterruptedException {
-        partition = partition.split(" ")[0];
-        Process process = Runtime.getRuntime().exec(new String[]{"mkfs.vfat", "-F", "32", partition});
+        Process process = Runtime.getRuntime().exec(new String[]{"mkfs.vfat", "-F", "32", partition.split(" ")[0]});
         if (process.waitFor() != 0) {
 
             InputStream errorStream = process.getErrorStream();
@@ -741,8 +740,6 @@ public class CydraInstaller {
     }
 
     private void mountPartition(String partition, String mountPoint, String fsType) throws IOException, InterruptedException {
-        partition = partition.split(" ")[0];
-
         Process process = Runtime.getRuntime().exec(new String[]{"mount", "-t", fsType, partition, mountPoint});
         if (process.waitFor() != 0) {
             throw new IOException("Mounting partition failed");
@@ -760,8 +757,8 @@ public class CydraInstaller {
     }
 
     private void configureSystem() throws IOException {
-        String chosenPartitionUuid = getPartitionUuid(chosenPartition.split(" ")[0]);
-        String efiPartitionUuid = getPartitionUuid(efiPartition.split(" ")[0]);
+        String chosenPartitionUuid = getPartitionUuid(chosenPartition);
+        String efiPartitionUuid = getPartitionUuid(efiPartition);
 
         Path fstabPath = Paths.get("/mnt/install/etc/fstab");
         Files.createDirectories(fstabPath.getParent());

@@ -508,18 +508,13 @@ public class CydraInstaller {
 
             selectedDrive = selectedDrive.substring(0, selectedDrive.indexOf(" "));
 
-            String[] message1 = {"Opening cfdisk for: " + selectedDrive};
+            String[] message1 = {"Press ENTER to launch cfdisk for: " + selectedDrive};
             ui.showContentBoxNoClear(message1);
-
-            String[] message2 = {"Please configure partitions in cfdisk. When finished, save and exit cfdisk to continue."};
-            ui.showContentBoxNoClear(message2);
-
-            String[] message3 = {"Press ENTER to launch cfdisk..."};
-            ui.showContentBoxNoClear(message3);
             scanner.nextLine();
 
             ProcessBuilder pb = new ProcessBuilder("cfdisk", selectedDrive);
             pb.environment().put("LANG", "en_US.UTF-8");
+            pb.environment().put("TERM", "xterm-256color");
             pb.inheritIO();
             Process cfdiskProcess = pb.start();
             int result = cfdiskProcess.waitFor();
@@ -529,6 +524,8 @@ public class CydraInstaller {
                 System.exit(1);
                 return;
             }
+
+            refreshPartitionTable(selectedDrive);
 
             List<String> partitions = getPartitionsOnDrive(selectedDrive);
             if (partitions.isEmpty()) {
@@ -551,13 +548,43 @@ public class CydraInstaller {
                     diskPartition();
                 }
 
-                efiPartition = ui.selectFromList("Select partition for EFI system (will be formatted as FAT32):", remainingPartitions);
+                efiPartition = ui.selectFromList("Select partition for EFI system", remainingPartitions);
+                try {
+                    Process process = new ProcessBuilder("umount", efiPartition.split(" ")[0])
+                            .inheritIO()
+                            .start();
+
+                    process.waitFor();
+
+                } catch (Exception ignored) {}
             }
+
+            try {
+                Process process = new ProcessBuilder("umount", chosenPartition.split(" ")[0])
+                        .inheritIO()
+                        .start();
+
+                process.waitFor();
+            } catch (Exception ignored) {}
 
             ui.showMessage("Partition configuration completed.");
 
         } catch (Exception e) {
             ui.showError("Error during disk partitioning: " + e.getMessage());
+        }
+    }
+
+    private void refreshPartitionTable(String drive) {
+        try {
+            Process process = new ProcessBuilder("blockdev", "--rereadpt", drive)
+                    .inheritIO()
+                    .start();
+            process.waitFor();
+
+            Thread.sleep(1000);
+
+        } catch (Exception e) {
+            ui.showError("Failed to reread partition table: " + e.getMessage());
         }
     }
 

@@ -38,6 +38,7 @@ public class InstallerUI {
                 "This will guide you through the installation",
                 ""
         };
+
         showContentBox(content);
         waitForEnter();
     }

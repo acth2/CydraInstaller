@@ -682,21 +682,33 @@ public class CydraInstaller {
 
     private void configureBootloader() throws IOException, InterruptedException {
         Process process;
+
+        Runtime.getRuntime().exec("mount --bind /dev /mnt/install/dev").waitFor();
+        Runtime.getRuntime().exec("mount --bind /proc /mnt/install/proc").waitFor();
+        Runtime.getRuntime().exec("mount --bind /sys /mnt/install/sys").waitFor();
+
         if (isEfiSystem()) {
+
+            Runtime.getRuntime().exec("umount -l /mnt/install/efi").waitFor();
+            Runtime.getRuntime().exec("mount " + efiPartition.split(" ")[0] + "/mnt/install/efi").waitFor();
+
             process = Runtime.getRuntime().exec(new String[]{
                     "grub-install",
                     "--target=x86_64-efi",
-                    "--efi-directory=/mnt/efi",
+                    "--efi-directory=/efi",
                     "--bootloader-id=CydraLite",
                     "--recheck",
                     "--no-floppy"
             });
+            handleProcessOutput(process);
+
         } else {
             process = Runtime.getRuntime().exec(new String[]{
                     "grub-install",
                     "--target=i386-pc",
                     chosenPartition.split(" ")[0]
             });
+            handleProcessOutput(process);
         }
 
 
@@ -739,6 +751,20 @@ public class CydraInstaller {
         grubLines.add("}");
 
         Files.write(grubPath, grubLines);
+    }
+
+    private void handleProcessOutput(Process process) throws IOException, InterruptedException {
+        String errorOutput = new String(process.getErrorStream().readAllBytes());
+        String stdOutput = new String(process.getInputStream().readAllBytes());
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException(
+                    "Installation of grub failed (exit code " + exitCode + "):\n" +
+                            "STDOUT:\n" + stdOutput + "\n" +
+                            "STDERR:\n" + errorOutput
+            );
+        }
     }
 
 

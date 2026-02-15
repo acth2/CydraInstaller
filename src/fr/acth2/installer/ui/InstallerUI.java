@@ -37,7 +37,7 @@ public class InstallerUI {
                 "",
                 "Welcome to CydraLite Installer",
                 "This will guide you through the installation",
-                ""
+                "NOTE: Run better in UEFI"
         };
 
         showContentBox(content);

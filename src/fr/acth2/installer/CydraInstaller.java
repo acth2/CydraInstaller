@@ -764,7 +764,7 @@ public class CydraInstaller {
         grubLines.add("");
         grubLines.add("insmod part_gpt");
         grubLines.add("insmod ext2");
-        grubLines.add("set root=" + convertToGrubFormat(chosenPartition));
+        grubLines.add("search --no-floppy --fs-uuid --set=root " + getPartitionUuid(chosenPartition.split(" ")[0]));
         grubLines.add("");
         grubLines.add("insmod efi_gop");
         grubLines.add("insmod efi_uga");
@@ -773,13 +773,15 @@ public class CydraInstaller {
         grubLines.add("fi");
         grubLines.add("");
         grubLines.add("menuentry \"GNU/Linux, CydraLite 6.13.4\" {");
-        grubLines.add("  linux   /boot/vmlinuz-6.13.4-lfs-12.3-systemd root=/dev/sda ro debug");
+        grubLines.add("  linux   /boot/vmlinuz-6.13.4-lfs-12.3-systemd root=" + getPartitionUuid(chosenPartition.split(" ")[0] + " ro debug"));
         grubLines.add("  initrd  /boot/initrd.img-6.13.4");
         grubLines.add("}");
         grubLines.add("");
-        grubLines.add("menuentry \"Firmware Setup\" {");
-        grubLines.add("  fwsetup");
-        grubLines.add("}");
+        grubLines.add("if [ \"$grub_platform\" = \"efi\" ]; then");
+        grubLines.add("  menuentry \"Firmware Setup\" {");
+        grubLines.add("    fwsetup");
+        grubLines.add("  }");
+        grubLines.add("fi");
 
         Files.write(grubPath, grubLines);
     }

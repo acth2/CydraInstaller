@@ -734,10 +734,19 @@ public class CydraInstaller {
             handleProcessOutput(process);
 
         } else {
+            String part = chosenPartition.split(" ")[0];
+            String device;
+            if (part.contains("nvme")) {
+                device = part.replaceAll("p\\d+$", "");
+            } else {
+                device = part.replaceAll("\\d+$", "");
+            }
+
             process = Runtime.getRuntime().exec(new String[]{
+                    "chroot", "/mnt/install",
                     "grub-install",
                     "--target=i386-pc",
-                    chosenPartition.split(" ")[0]
+                    device
             });
             handleProcessOutput(process);
         }
@@ -843,7 +852,9 @@ public class CydraInstaller {
 
     private void configureSystem() throws IOException {
         String chosenPartitionUuid = getPartitionUuid(chosenPartition);
-        String efiPartitionUuid = getPartitionUuid(efiPartition);
+        String efiPartitionUuid = null;
+        if (isEfiSystem()) efiPartitionUuid = getPartitionUuid(efiPartition);
+
 
         Path fstabPath = Paths.get("/mnt/install/etc/fstab");
         Files.createDirectories(fstabPath.getParent());

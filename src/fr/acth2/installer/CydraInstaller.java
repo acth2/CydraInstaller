@@ -874,6 +874,17 @@ public class CydraInstaller {
         if (isWireless) {
             //configureWirelessNetwork();
         }
+
+        Path issuePath = Paths.get("/mnt/install/etc/issue");
+        if (Files.exists(issuePath)) {
+            List<String> issueLines = Files.readAllLines(issuePath);
+            if (issueLines.size() >= 6) {
+                issueLines.subList(3, 6).clear();
+            } else if (issueLines.size() > 3) {
+                issueLines.subList(3, issueLines.size()).clear();
+            }
+            Files.write(issuePath, issueLines);
+        }
     }
 
     private String getLocaleForLanguage(String lang) {

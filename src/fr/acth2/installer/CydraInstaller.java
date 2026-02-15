@@ -3,6 +3,7 @@ package fr.acth2.installer;
 import fr.acth2.installer.ui.InstallerUI;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 
@@ -970,8 +971,13 @@ public class CydraInstaller {
             throw new IOException("Failed to create user account");
         }
 
-        if (addSudoerProcess.waitFor() != 0) {
-            throw new IOException("Failed to add user to sudoer");
+        int exitCode = addSudoerProcess.waitFor();
+        InputStream errorStream = addSudoerProcess.getErrorStream();
+        String errors = new String(errorStream.readAllBytes(), StandardCharsets.UTF_8).trim();
+
+        if (exitCode != 0) {
+            throw new IOException("Failed to add user to sudoer. Exit code: "
+                    + exitCode + ". Error output: " + errors);
         }
 
         if (rmCydraUsrProcess.waitFor() != 0) {

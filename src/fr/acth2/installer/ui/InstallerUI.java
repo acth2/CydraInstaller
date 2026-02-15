@@ -195,13 +195,19 @@ public class InstallerUI {
     }
 
     public String getPassword(String prompt) {
+        Console console = System.console();
+        if (console == null) {
+            throw new IllegalStateException("No console available. Please run this program from a terminal.");
+        }
+
         while (true) {
             clearAndShowFullScreen();
 
             String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
             showContentBox(lines);
 
-            String password = readPasswordMasked("> ");
+            char[] pwdChars = console.readPassword("> ");
+            String password = new String(pwdChars).trim();
 
             if (password.length() < 4) {
                 showWarning("Password must be at least 4 characters long. Please try again.");
@@ -211,7 +217,8 @@ public class InstallerUI {
             String[] confirmLines = splitMessage("Please confirm your password", Math.min(terminalWidth - 10, 70));
             showContentBox(confirmLines);
 
-            String confirmPassword = readPasswordMasked("> ");
+            char[] confirmPwdChars = console.readPassword("> ");
+            String confirmPassword = new String(confirmPwdChars).trim();
 
             if (password.equals(confirmPassword)) {
                 return password;
@@ -221,40 +228,6 @@ public class InstallerUI {
         }
     }
 
-    private String readPasswordMasked(String prompt) {
-        System.out.print(prompt);
-        StringBuilder password = new StringBuilder();
-
-        try {
-            Console console = System.console();
-
-            if (console != null) {
-                char[] pwdChars = console.readPassword();
-                return new String(pwdChars).trim();
-            }
-
-            while (true) {
-                int ch = System.in.read();
-
-                if (ch == '\n' || ch == '\r') {
-                    System.out.println();
-                    break;
-                } else if (ch == 127 || ch == 8) {
-                    if (password.length() > 0) {
-                        password.deleteCharAt(password.length() - 1);
-                        System.out.print("\b \b");
-                    }
-                } else if (ch >= 32 && ch < 127) {
-                    password.append((char) ch);
-                    System.out.print("*");
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return password.toString().trim();
-    }
 
     public String selectFromList(String title, List<String> options) {
         clearAndShowFullScreen();

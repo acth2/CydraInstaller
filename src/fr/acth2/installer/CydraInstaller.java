@@ -718,6 +718,7 @@ public class CydraInstaller {
         if (isEfiSystem()) {
             Runtime.getRuntime().exec("mkdir /mnt/install/efi").waitFor();
             Runtime.getRuntime().exec("mount " + efiPartition.split(" ")[0] + " /mnt/install/efi").waitFor();
+            Runtime.getRuntime().exec("mount --bind /sys/firmware/efi/efivars /mnt/install/sys/firmware/efi/efivars");
 
             process = Runtime.getRuntime().exec(new String[]{
                     "chroot", "/mnt/install",

@@ -3,6 +3,7 @@ package fr.acth2.installer.ui;
 import fr.acth2.installer.CydraInstaller;
 
 import java.io.Console;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Scanner;
@@ -200,17 +201,7 @@ public class InstallerUI {
             String[] lines = splitMessage(prompt, Math.min(terminalWidth - 10, 70));
             showContentBox(lines);
 
-            System.out.println();
-            System.out.print("> ");
-
-            String password;
-            Console console = System.console();
-            if (console != null) {
-                char[] passwordChars = console.readPassword();
-                password = new String(passwordChars);
-            } else {
-                password = scanner.nextLine().trim();
-            }
+            String password = readPasswdMask("> ");
 
             if (password.length() < 4) {
                 showWarning("Password must be at least 4 characters long. Please try again.");
@@ -219,16 +210,8 @@ public class InstallerUI {
 
             String[] confirmLines = splitMessage("Please confirm your password", Math.min(terminalWidth - 10, 70));
             showContentBox(confirmLines);
-            System.out.println();
-            System.out.print("> ");
 
-            String confirmPassword;
-            if (console != null) {
-                char[] confirmChars = console.readPassword();
-                confirmPassword = new String(confirmChars);
-            } else {
-                confirmPassword = scanner.nextLine().trim();
-            }
+            String confirmPassword = readPasswdMask("> ");
 
             if (password.equals(confirmPassword)) {
                 return password;
@@ -236,6 +219,34 @@ public class InstallerUI {
                 showWarning("Passwords do not match. Please try again.");
             }
         }
+    }
+
+    private String readPasswdMask(String prompt) {
+        System.out.print(prompt);
+        StringBuilder password = new StringBuilder();
+
+        try {
+            while (true) {
+                int ch = System.in.read();
+
+                if (ch == '\n' || ch == '\r') {
+                    System.out.println();
+                    break;
+                } else if (ch == 127 || ch == 8) {
+                    if (password.length() > 0) {
+                        password.deleteCharAt(password.length() - 1);
+                        System.out.print("\b \b");
+                    }
+                } else {
+                    password.append((char) ch);
+                    System.out.print("*");
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return password.toString().trim();
     }
 
     public String selectFromList(String title, List<String> options) {
@@ -266,6 +277,13 @@ public class InstallerUI {
     public void waitForEnter() {
         System.out.println();
         System.out.print("Press Enter to continue...");
+
+        try {
+            while (System.in.available() > 0) {
+                System.in.read();
+            }
+        } catch (IOException ignored) {}
+
         scanner.nextLine();
     }
 

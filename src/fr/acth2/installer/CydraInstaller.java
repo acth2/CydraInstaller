@@ -721,6 +721,7 @@ public class CydraInstaller {
             Runtime.getRuntime().exec("mount " + efiPartition.split(" ")[0] + "/mnt/install/efi").waitFor();
 
             process = Runtime.getRuntime().exec(new String[]{
+                    "chroot", "/mnt/install",
                     "grub-install",
                     "--target=x86_64-efi",
                     "--efi-directory=/efi",
@@ -728,6 +729,7 @@ public class CydraInstaller {
                     "--recheck",
                     "--no-floppy"
             });
+
             handleProcessOutput(process);
 
         } else {

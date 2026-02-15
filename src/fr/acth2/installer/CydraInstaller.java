@@ -252,9 +252,7 @@ public class CydraInstaller {
     }
 
     private String getUserInfoInput() {
-
         try {
-
             String[] cmd = {"/bin/sh", "-c", "stty raw -echo </dev/tty"};
             Runtime.getRuntime().exec(cmd).waitFor();
 
@@ -276,7 +274,6 @@ public class CydraInstaller {
 
                     }
                 }
-
                 return "enter";
 
             } else if (key == 10 || key == 13) {
@@ -324,6 +321,10 @@ public class CydraInstaller {
             case 1:
                 List<String> layouts = Arrays.asList("us", "fr", "de", "es", "it", "uk");
                 keyboardLayout = ui.selectFromList("Select keyboard layout", layouts);
+
+                try {
+                    Runtime.getRuntime().exec("loadkeys " + keyboardLayout).waitFor();
+                } catch (Exception ignored) {}
                 return true;
 
             case 2:
@@ -515,10 +516,9 @@ public class CydraInstaller {
 
             String[] message3 = {"Press ENTER to launch cfdisk..."};
             ui.showContentBoxNoClear(message3);
-
             scanner.nextLine();
 
-            ProcessBuilder pb = new ProcessBuilder("cfdisk", selectedDrive);
+            ProcessBuilder pb = new ProcessBuilder("LANG=en_US.UTF-8", "cfdisk", selectedDrive);
             pb.inheritIO();
             Process cfdiskProcess = pb.start();
             int result = cfdiskProcess.waitFor();
@@ -817,7 +817,7 @@ public class CydraInstaller {
 
     private void extractSystem() throws IOException, InterruptedException {
         Process process = Runtime.getRuntime().exec(new String[]{
-                "unsquashfs", "-f", "-d", "/mnt/install",  "/root/filesystem.squashfs"
+                "/usr/local/bin/unsquashfs", "-f", "-d", "/mnt/install",  "/root/filesystem.squashfs"
         });
 
         if (process.waitFor() != 0) {

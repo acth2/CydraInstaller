@@ -773,7 +773,7 @@ public class CydraInstaller {
         grubLines.add("fi");
         grubLines.add("");
         grubLines.add("menuentry \"GNU/Linux, CydraLite 6.13.4\" {");
-        grubLines.add("  linux   /boot/vmlinuz-6.13.4-lfs-12.3-systemd root=" + getPartitionUuid(chosenPartition.split(" ")[0] + " ro debug"));
+        grubLines.add("  linux   /boot/vmlinuz-6.13.4-lfs-12.3-systemd root=UUID=" + getPartitionUuid(chosenPartition.split(" ")[0] + " ro debug"));
         grubLines.add("  initrd  /boot/initrd.img-6.13.4");
         grubLines.add("}");
         grubLines.add("");
@@ -936,36 +936,26 @@ public class CydraInstaller {
     }
 
     private void createUserAccount() throws IOException, InterruptedException {
-        ui.showSection("CREATING USER ACCOUNT");
+        ui.showSection("UPDATING USER ACCOUNT");
 
-        Process userAddProcess = Runtime.getRuntime().exec(new String[]{
-                "chroot", "/mnt/install", "useradd", "-m", "-G", "wheel", "-s", "/bin/bash", username
+        Process renameProcess = Runtime.getRuntime().exec(new String[]{
+                "chroot", "/mnt/install", "usermod", "-l", username, "cydra"
         });
-        int userAddExit = userAddProcess.waitFor();
-        String userAddErrors = new String(userAddProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-        if (userAddExit != 0) {
-            throw new IOException("Failed to create user account. Exit code: "
-                    + userAddExit + ". Error output: " + userAddErrors);
+        int renameExit = renameProcess.waitFor();
+        String renameErrors = new String(renameProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+        if (renameExit != 0) {
+            throw new IOException("Failed to rename 'cydra' to '" + username +
+                    "'. Exit code: " + renameExit + ". Error output: " + renameErrors);
         }
 
-        Process addSudoerProcess = Runtime.getRuntime().exec(new String[]{
-                "chroot", "/mnt/install", "usermod", "-a", "-G", "sudo", username
+        Process moveHomeProcess = Runtime.getRuntime().exec(new String[]{
+                "chroot", "/mnt/install", "usermod", "-d", "/home/" + username, "-m", username
         });
-        int sudoExit = addSudoerProcess.waitFor();
-        String sudoErrors = new String(addSudoerProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-        if (sudoExit != 0) {
-            throw new IOException("Failed to add user to sudoer. Exit code: "
-                    + sudoExit + ". Error output: " + sudoErrors);
-        }
-
-        Process rmCydraUsrProcess = Runtime.getRuntime().exec(new String[]{
-                "chroot", "/mnt/install", "userdel", "-f", "cydra"
-        });
-        int rmExit = rmCydraUsrProcess.waitFor();
-        String rmErrors = new String(rmCydraUsrProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-        if (rmExit != 0) {
-            throw new IOException("Failed to remove cydra account. Exit code: "
-                    + rmExit + ". Error output: " + rmErrors);
+        int moveHomeExit = moveHomeProcess.waitFor();
+        String moveHomeErrors = new String(moveHomeProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+        if (moveHomeExit != 0) {
+            throw new IOException("Failed to move home directory for '" + username +
+                    "'. Exit code: " + moveHomeExit + ". Error output: " + moveHomeErrors);
         }
 
         Process passwdProcess = Runtime.getRuntime().exec(new String[]{

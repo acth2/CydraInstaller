@@ -119,7 +119,7 @@ public class InstallerUI {
 
         String[] lines = splitMessage("ERROR: " + error, Math.min(terminalWidth - 10, 70) + 19);
         showContentBox(lines);
-        waitForEnter();
+        waitAndKill(2500);
     }
 
     public boolean confirmAction(String message) {
@@ -266,6 +266,14 @@ public class InstallerUI {
         System.out.println();
         System.out.print("Press Enter to continue...");
         scanner.nextLine();
+    }
+
+    public void waitAndKill(int milliseconds) {
+        int seconds = milliseconds / 1000;
+        System.out.println();
+        System.out.println("Program will end in " + seconds + " seconds");
+        try { Thread.sleep(milliseconds); } catch (InterruptedException e) { throw new RuntimeException(e); }
+        System.exit(0);
     }
 
     public void updateProgress(int section) {

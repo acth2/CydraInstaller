@@ -518,7 +518,7 @@ public class CydraInstaller {
             ui.showContentBoxNoClear(message3);
             scanner.nextLine();
 
-            ProcessBuilder pb = new ProcessBuilder("LANG=en_US.UTF-8", "cfdisk", selectedDrive);
+            ProcessBuilder pb = new ProcessBuilder("LANG=en_US.UTF-8 cfdisk", selectedDrive);
             pb.inheritIO();
             Process cfdiskProcess = pb.start();
             int result = cfdiskProcess.waitFor();

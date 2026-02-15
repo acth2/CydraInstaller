@@ -800,25 +800,6 @@ public class CydraInstaller {
         }
     }
 
-
-    public static String convertToGrubFormat(String mainPartition) {
-        mainPartition = mainPartition.split(" ")[0];
-        try {
-            String diskLetter = mainPartition.replaceAll(".*/dev/sd([a-z]).*", "$1");
-            if (diskLetter.isEmpty()) {
-                throw new IllegalArgumentException("Invalid disk format: " + mainPartition);
-            }
-
-            String partitionStr = mainPartition.replaceAll(".*/dev/sd[a-z]([0-9]+)?.*", "$1");
-            int diskNumber = diskLetter.charAt(0) - 'a';
-            int partitionNumber = partitionStr.isEmpty() ? 0 : Integer.parseInt(partitionStr) - 1;
-
-            return String.format("(hd%d,%d)", diskNumber, partitionNumber);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to parse partition: " + mainPartition, e);
-        }
-    }
-
     private void formatEXT4(String partition) throws IOException, InterruptedException {
         Process process = Runtime.getRuntime().exec(new String[]{"mkfs.ext4", partition.split(" ")[0]});
         if (process.waitFor() != 0) {

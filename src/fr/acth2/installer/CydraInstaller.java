@@ -772,7 +772,6 @@ public class CydraInstaller {
         Process process = Runtime.getRuntime().exec(new String[]{
                 "unsquashfs", "-f", "-d", "/mnt/install",  "/root/filesystem.squashfs"
         });
-        Files.delete(Paths.get("/mnt/install/tarexclude"));
 
         if (process.waitFor() != 0) {
             InputStream errorStream = process.getErrorStream();

@@ -958,42 +958,46 @@ public class CydraInstaller {
         Process userAddProcess = Runtime.getRuntime().exec(new String[]{
                 "chroot", "/mnt/install", "useradd", "-m", "-G", "wheel", "-s", "/bin/bash", username
         });
+        int userAddExit = userAddProcess.waitFor();
+        String userAddErrors = new String(userAddProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+        if (userAddExit != 0) {
+            throw new IOException("Failed to create user account. Exit code: "
+                    + userAddExit + ". Error output: " + userAddErrors);
+        }
 
         Process addSudoerProcess = Runtime.getRuntime().exec(new String[]{
                 "chroot", "/mnt/install", "usermod", "-a", "-G", "sudo", username
         });
+        int sudoExit = addSudoerProcess.waitFor();
+        String sudoErrors = new String(addSudoerProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+        if (sudoExit != 0) {
+            throw new IOException("Failed to add user to sudoer. Exit code: "
+                    + sudoExit + ". Error output: " + sudoErrors);
+        }
 
         Process rmCydraUsrProcess = Runtime.getRuntime().exec(new String[]{
                 "chroot", "/mnt/install", "userdel", "-f", "cydra"
         });
-
-        if (userAddProcess.waitFor() != 0) {
-            throw new IOException("Failed to create user account");
-        }
-
-        int exitCode = addSudoerProcess.waitFor();
-        InputStream errorStream = addSudoerProcess.getErrorStream();
-        String errors = new String(errorStream.readAllBytes(), StandardCharsets.UTF_8).trim();
-
-        if (exitCode != 0) {
-            throw new IOException("Failed to add user to sudoer. Exit code: "
-                    + exitCode + ". Error output: " + errors);
-        }
-
-        if (rmCydraUsrProcess.waitFor() != 0) {
-            throw new IOException("Failed to remove cydra account");
+        int rmExit = rmCydraUsrProcess.waitFor();
+        String rmErrors = new String(rmCydraUsrProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+        if (rmExit != 0) {
+            throw new IOException("Failed to remove cydra account. Exit code: "
+                    + rmExit + ". Error output: " + rmErrors);
         }
 
         Process passwdProcess = Runtime.getRuntime().exec(new String[]{
                 "chroot", "/mnt/install", "chpasswd"
         });
-
         try (PrintWriter writer = new PrintWriter(passwdProcess.getOutputStream())) {
             writer.println(username + ":" + password);
             writer.println("root:" + rootPassword);
         }
-        if (passwdProcess.waitFor() != 0) {
-            throw new IOException("Failed to set passwords");
+
+        int passwdExit = passwdProcess.waitFor();
+        String passwdErrors = new String(passwdProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+        if (passwdExit != 0) {
+            throw new IOException("Failed to set passwords. Exit code: "
+                    + passwdExit + ". Error output: " + passwdErrors);
         }
     }
 

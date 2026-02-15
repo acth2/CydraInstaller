@@ -740,7 +740,7 @@ public class CydraInstaller {
     }
 
     private void mountPartition(String partition, String mountPoint, String fsType) throws IOException, InterruptedException {
-        Process process = Runtime.getRuntime().exec(new String[]{"mount", "-t", fsType, partition, mountPoint});
+        Process process = Runtime.getRuntime().exec(new String[]{"mount", "-t", fsType, partition.split(" ")[0], mountPoint});
         if (process.waitFor() != 0) {
             throw new IOException("Mounting partition failed");
         }

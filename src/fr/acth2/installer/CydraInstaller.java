@@ -956,7 +956,6 @@ public class CydraInstaller {
 
     private void systemConfiguration() throws IOException, InterruptedException {
         ui.showSection("SYSTEM CONFIGURATION");
-
         if (enableSSH) {
             Process sshProcess = Runtime.getRuntime().exec(new String[]{
                     "chroot", "/mnt/install", "systemctl", "enable", "sshd"

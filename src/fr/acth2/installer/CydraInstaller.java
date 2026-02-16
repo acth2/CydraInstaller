@@ -31,6 +31,9 @@ public class CydraInstaller {
     //private static final String LANGUAGE_PATTERN = "^(fr|us|en|de|es|it)$";
     private static final String HOSTNAME_PATTERN = "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$";
     private static final String USERNAME_PATTERN = "^[a-z_][a-z0-9_-]{0,31}$";
+    private static final String YELLOW = "\u001B[33m";
+    private static final String GRAY = "\u001B[33m";
+    private static final String RESET = "\u001B[0m";
     //private static final String TIMEZONE_PATTERN = "^[A-Za-z]+/[A-Za-z_]+$";
     //private static final String KEYBOARD_PATTERN = "^(us|fr|de|es|it|uk)$";
 
@@ -79,6 +82,7 @@ public class CydraInstaller {
             if (ui.confirmAction("Everything setup, are you ready to begin installation?")) {
                 isInstalling = true;
 
+                System.out.println(YELLOW + "Starting to install cydralite." + RESET);
                 installCydra();
                 ui.updateProgress(7);
 
@@ -646,11 +650,14 @@ public class CydraInstaller {
         ui.showSection("INSTALLING CYDRA");
 
         try {
+            System.out.println();
+            System.out.println(GRAY + "Formatting partitions." + RESET);
             formatEXT4(chosenPartition);
             if (isEfiSystem()) {
                 formatEFI(efiPartition);
             }
 
+            System.out.println(GRAY + "Mounting partitions." + RESET);
             mountPartition(chosenPartition, "/mnt/install", "ext4");
 
             if (isEfiSystem()) {
@@ -664,6 +671,7 @@ public class CydraInstaller {
                 createSwapFile();
             }
 
+            System.out.println(YELLOW + "Configuring GRUB bootloader" + RESET);
             configureBootloader();
         } catch (Exception e) {
             ui.showError("Error during Cydra installation: " + e.getMessage());
@@ -673,6 +681,7 @@ public class CydraInstaller {
     private void configureBootloader() throws IOException, InterruptedException {
         Process process;
 
+        System.out.println(GRAY + "Mounting volatile directories." + RESET);
         Runtime.getRuntime().exec("mount --bind /dev /mnt/install/dev").waitFor();
         Runtime.getRuntime().exec("mount --bind /proc /mnt/install/proc").waitFor();
         Runtime.getRuntime().exec("mount --bind /sys /mnt/install/sys").waitFor();
@@ -682,6 +691,7 @@ public class CydraInstaller {
             Runtime.getRuntime().exec("mount " + efiPartition.split(" ")[0] + " /mnt/install/efi").waitFor();
             Runtime.getRuntime().exec("mount --bind /sys/firmware/efi/efivars /mnt/install/sys/firmware/efi/efivars");
 
+            System.out.println("Installing GRUB for UEFI.");
             process = Runtime.getRuntime().exec(new String[]{
                     "chroot", "/mnt/install",
                     "grub-install",
@@ -703,6 +713,7 @@ public class CydraInstaller {
                 device = part.replaceAll("\\d+$", "");
             }
 
+            System.out.println("Installing GRUB for BIOS Legacy.");
             process = Runtime.getRuntime().exec(new String[]{
                     "chroot", "/mnt/install",
                     "grub-install",
@@ -725,6 +736,7 @@ public class CydraInstaller {
             );
         }
 
+        System.out.println("Creating grub configuration file.");
         Path grubPath = Paths.get("/mnt/install/boot/grub/grub.cfg");
         Files.createDirectories(grubPath.getParent());
 
@@ -801,6 +813,7 @@ public class CydraInstaller {
     }
 
     private void extractSystem() throws IOException, InterruptedException {
+        System.out.println("Extracting system.");
         Process process = Runtime.getRuntime().exec(new String[]{
                 "/usr/local/bin/unsquashfs", "-f", "-d", "/mnt/install",  "/root/filesystem.squashfs"
         });
@@ -813,6 +826,7 @@ public class CydraInstaller {
     }
 
     private void configureSystem() throws IOException {
+        System.out.println(YELLOW + "Starting system configuration." + RESET);
         String chosenPartitionUuid = getPartitionUuid(chosenPartition);
         String efiPartitionUuid = null;
         if (isEfiSystem()) efiPartitionUuid = getPartitionUuid(efiPartition);
@@ -821,30 +835,35 @@ public class CydraInstaller {
         Path fstabPath = Paths.get("/mnt/install/etc/fstab");
         Files.createDirectories(fstabPath.getParent());
 
+        System.out.println(GRAY + "Configuring fstab file." + RESET);
         List<String> fstabLines = new ArrayList<>();
         fstabLines.add("#CydraLite fstab file. Make a backup before altering its content.");
         fstabLines.add("");
         fstabLines.add("UUID=" + chosenPartitionUuid + "      /            ext4    defaults                                1     1");
         if (enableSwap) fstabLines.add("/swapfile                         swap         swap    pri=1                                   0     0");
         if (isEfiSystem()) fstabLines.add("UUID=" + efiPartitionUuid + "     /boot/efi    vfat    codepage=437,iocharset=iso8859-1        0     1");
-
         Files.write(fstabPath, fstabLines);
 
+        System.out.println(GRAY + "Configuring system name to " + machineName + "." + RESET);
         Files.write(Paths.get("/mnt/install/etc/hostname"), Collections.singletonList(machineName));
 
+        System.out.println(GRAY + "Configuring localtime file" + RESET);
         Path localtimePath = Paths.get("/mnt/install/etc/localtime");
         if (!Files.exists(localtimePath)) {
             Files.createSymbolicLink(localtimePath, Paths.get("/usr/share/zoneinfo/" + timezone));
         }
 
+        System.out.println(GRAY + "Configuring locale file" + RESET);
         Path localeConfPath = Paths.get("/mnt/install/etc/locale.conf");
         String locale = "LANG=" + getLocaleForLanguage(language);
         Files.write(localeConfPath, Collections.singletonList(locale));
 
+        System.out.println(GRAY + "Configuring vconsole file" + RESET);
         Path vconsolePath = Paths.get("/mnt/install/etc/vconsole.conf");
         Files.write(vconsolePath, Collections.singletonList("KEYMAP=" + keyboardLayout));
 
         if (isWireless) {
+            System.out.println(GRAY + "Wireless not implemented yet.." + RESET);
             //configureWirelessNetwork();
         }
 
@@ -900,6 +919,7 @@ public class CydraInstaller {
     private void createSwapFile() throws IOException, InterruptedException {
         Path swapfilePath = Paths.get("/mnt/install/swapfile");
 
+        System.out.println(YELLOW + "Configuring swap file" + RESET);
         Process ddProcess = Runtime.getRuntime().exec(new String[]{
                 "dd", "if=/dev/zero", "of=" + swapfilePath.toString(), "bs=1M", "count=" + (swapSize * 1024)
         });
@@ -922,6 +942,7 @@ public class CydraInstaller {
     private void createUserAccount() throws IOException, InterruptedException {
         ui.showSection("UPDATING USER ACCOUNT");
 
+        System.out.println(YELLOW + "Configuring user account." + RESET);
         Process renameProcess = Runtime.getRuntime().exec(new String[]{
                 "chroot", "/mnt/install", "usermod", "-l", username, "cydra"
         });
@@ -942,6 +963,7 @@ public class CydraInstaller {
                     "'. Exit code: " + moveHomeExit + ". Error output: " + moveHomeErrors);
         }
 
+        System.out.println(GRAY + "Changing user password." + RESET);
         Process passwdProcess = Runtime.getRuntime().exec(new String[]{
                 "chroot", "/mnt/install", "chpasswd"
         });
@@ -961,6 +983,7 @@ public class CydraInstaller {
     private void systemConfiguration() throws IOException, InterruptedException {
         ui.showSection("SYSTEM CONFIGURATION");
         if (enableSSH) {
+            System.out.println("Enabling SSH service.");
             Process sshProcess = Runtime.getRuntime().exec(new String[]{
                     "chroot", "/mnt/install", "systemctl", "enable", "sshd"
             });

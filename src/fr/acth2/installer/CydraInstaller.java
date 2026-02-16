@@ -707,6 +707,7 @@ public class CydraInstaller {
                     "chroot", "/mnt/install",
                     "grub-install",
                     "--target=i386-pc",
+                    "--force",
                     device
             });
             handleProcessOutput(process);

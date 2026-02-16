@@ -284,30 +284,32 @@ public class InstallerUI {
 
     public void clearAndShowFullScreen() {
         clearScreen();
-        showHeader();
-        showProgressBar();
+        if (isEfiSystem()) {
+            showHeader();
+            showProgressBar();
+        } else if (CydraInstaller.isSystemInstalling()) {
+            showProgressBar();
+        }
         System.out.println("\n");
     }
 
     void showHeader() {
         updateTerminalSize();
         String headerLine = " ".repeat(terminalWidth);
-        if (isEfiSystem()) {
-            if (!CydraInstaller.error) {
-                if (currentSectionName == null) {
-                    System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
-                    System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
-                    System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
-                } else {
-                    System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
-                    System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer - " + currentSectionName, terminalWidth) + RESET);
-                    System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
-                }
+        if (!CydraInstaller.error) {
+            if (currentSectionName == null) {
+                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+                System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer", terminalWidth) + RESET);
+                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
             } else {
-                System.out.println(RED + WHITE_BOLD + headerLine + RESET);
-                System.out.println(RED + WHITE_BOLD + centerText("CydraLite Installer encountered an error.", terminalWidth) + RESET);
-                System.out.println(RED + WHITE_BOLD + headerLine + RESET);
+                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
+                System.out.println(BLUE_BG + WHITE_BOLD + centerText("CydraLite Installer - " + currentSectionName, terminalWidth) + RESET);
+                System.out.println(BLUE_BG + WHITE_BOLD + headerLine + RESET);
             }
+        } else {
+            System.out.println(RED + WHITE_BOLD + headerLine + RESET);
+            System.out.println(RED + WHITE_BOLD + centerText("CydraLite Installer encountered an error.", terminalWidth) + RESET);
+            System.out.println(RED + WHITE_BOLD + headerLine + RESET);
         }
     }
 

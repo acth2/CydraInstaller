@@ -26,6 +26,7 @@ public class CydraInstaller {
     private boolean enableSSH;
     private String rootPassword;
     public static boolean error = false;
+    private static boolean isInstalling = false;
 
     //private static final String LANGUAGE_PATTERN = "^(fr|us|en|de|es|it)$";
     private static final String HOSTNAME_PATTERN = "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$";
@@ -76,17 +77,19 @@ public class CydraInstaller {
             ui.updateProgress(5);
 
             if (ui.confirmAction("Everything setup, are you ready to begin installation?")) {
+                isInstalling = true;
+
                 installCydra();
-                ui.updateProgress(8);
+                ui.updateProgress(7);
 
                 createUserAccount();
-                ui.updateProgress(9);
+                ui.updateProgress(8);
 
                 systemConfiguration();
-                ui.updateProgress(10);
+                ui.updateProgress(9);
 
                 cleanLive();
-                ui.updateProgress(11);
+                ui.updateProgress(10);
 
                 ui.showMessage("The Installation is finished, thanks for using CydraLite !");
             }
@@ -996,5 +999,9 @@ public class CydraInstaller {
         } else {
             ui.showMessage("Thanks for using the CydraLite installer");
         }
+    }
+
+    public static boolean isSystemInstalling() {
+        return isInstalling;
     }
 }

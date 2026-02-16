@@ -32,7 +32,7 @@ public class CydraInstaller {
     private static final String HOSTNAME_PATTERN = "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$";
     private static final String USERNAME_PATTERN = "^[a-z_][a-z0-9_-]{0,31}$";
     private static final String YELLOW = "\u001B[33m";
-    private static final String GRAY = "\u001B[33m";
+    private static final String GRAY = "\u001B[90m";
     private static final String RESET = "\u001B[0m";
     //private static final String TIMEZONE_PATTERN = "^[A-Za-z]+/[A-Za-z_]+$";
     //private static final String KEYBOARD_PATTERN = "^(us|fr|de|es|it|uk)$";
